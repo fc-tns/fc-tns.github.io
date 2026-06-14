@@ -85,6 +85,10 @@
   .pos-pick label.on { border-color: var(--ink); background: var(--ink); color: var(--chalk); }
   .pos-pick input { display: none; }
   .pos-tag + .pos-tag { margin-left: 4px; }
+  .pos-pick { flex-direction: column; align-items: stretch; }
+  .pos-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .pos-glabel { font-size: 11px; font-weight: 700; color: var(--muted); width: 52px; flex-shrink: 0; }
+  .pos-pick label { padding: 6px 10px; font-size: 12.5px; }
 
   button.btn {
     font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
@@ -136,6 +140,9 @@
   }
   .qbar button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   .qbar button .qn { font-size: 11px; font-weight: 600; opacity: .8; margin-left: 4px; }
+  .qbar button .yr-del { margin-left: 6px; font-size: 10px; opacity: .5; padding: 0 2px; }
+  .qbar button.active .yr-del { opacity: .85; }
+  .qbar button .yr-del:hover { opacity: 1; }
 
   /* lineup builder */
   .builder-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
@@ -538,12 +545,7 @@
       <select id="mBirthD" style="flex:1"></select>
     </div>
     <label class="fld">포지션 (여러 개 선택 가능)</label>
-    <div class="pos-pick" id="mPos" style="margin-bottom:6px">
-      <label><input type="checkbox" value="FWD">공격</label>
-      <label><input type="checkbox" value="MID">미드필더</label>
-      <label><input type="checkbox" value="DEF">수비</label>
-      <label><input type="checkbox" value="GK">골키퍼</label>
-    </div>
+    <div class="pos-pick" id="mPos" style="margin-bottom:6px"></div>
     <div class="form-actions">
       <button class="btn ghost" id="mCancel">취소</button>
       <button class="btn" id="mSave">저장</button>
@@ -559,6 +561,21 @@
 const POS_LABEL = { GK:'골키퍼', DEF:'수비', MID:'미드필더', FWD:'공격' };
 const POS_SHORT = { GK:'GK', DEF:'수비', MID:'미드', FWD:'공격' };
 const POS_ORDER = ['FWD','MID','DEF','GK'];
+// 세부 포지션 코드 -> 계열(FWD/MID/DEF/GK)
+const DETAIL_POS = {
+  ST:'FWD', CF:'FWD', LW:'FWD', RW:'FWD',
+  CAM:'MID', CM:'MID', CDM:'MID', LM:'MID', RM:'MID',
+  CB:'DEF', LB:'DEF', RB:'DEF', LWB:'DEF', RWB:'DEF',
+  GK:'GK',
+};
+const DETAIL_GROUPS = [
+  ['FWD','공격',['ST','CF','LW','RW']],
+  ['MID','미드필더',['CAM','CM','CDM','LM','RM']],
+  ['DEF','수비',['CB','LB','RB','LWB','RWB']],
+  ['GK','골키퍼',['GK']],
+];
+function posCat(code){ return DETAIL_POS[code] || (POS_ORDER.includes(code) ? code : 'MID'); }
+function posLabel(code){ return DETAIL_POS[code] ? code : (POS_SHORT[code] || code); }
 const ROLE_BADGE = {
   GK:  { bg:'#f2b705', fg:'#4a3500', bd:'#caa400' },
   DEF: { bg:'#3b82c4', fg:'#ffffff', bd:'#2f6ba3' },
@@ -567,7 +584,7 @@ const ROLE_BADGE = {
 };
 // 유니폼 색 (보라/흰). 골키퍼는 구분을 위해 금색 유지.
 const UNIFORM = { purple:{ bg:'#7c3aed', fg:'#ffffff' }, white:{ bg:'#f4f4f5', fg:'#14201a' } };
-function badgeColor(role){ if(role==='GK') return ROLE_BADGE.GK; const u = UNIFORM[state.uniform] || UNIFORM.purple; return { bg:u.bg, fg:u.fg }; }
+function badgeColor(role){ if(posCat(role)==='GK') return ROLE_BADGE.GK; const u = UNIFORM[state.uniform] || UNIFORM.purple; return { bg:u.bg, fg:u.fg }; }
 const QUARTERS = [1,2,3,4];
 
 // 경기장 라인 마킹 (SVG, 68x105 비율)
@@ -638,32 +655,31 @@ function initCloud(){
 }
 
 function posArr(p){ return Array.isArray(p.pos) ? p.pos : (p.pos ? [p.pos] : []); }
-function primaryPos(p){ const a=posArr(p); return a[0] || 'MID'; }
-function isGK(p){ return primaryPos(p)==='GK'; }
+function primaryPos(p){ const a=posArr(p); return a[0] || 'CM'; }
+function isGK(p){ return posCat(primaryPos(p))==='GK'; }
 function posTagsHTML(p, style){
   const a = posArr(p);
   if(a.length===0) return '';
-  return a.map(r=>`<span class="pos-tag pos-${r}"${style?` style="${style}"`:''}>${POS_SHORT[r]}</span>`).join('');
+  return a.map(r=>`<span class="pos-tag pos-${posCat(r)}"${style?` style="${style}"`:''}>${posLabel(r)}</span>`).join('');
 }
 
 // formation layouts
 const FORMATIONS = {
-  '4-4-2': layout([['FWD',2],['MID',4],['DEF',4],['GK',1]]),
-  '4-3-3': layout([['FWD',3],['MID',3],['DEF',4],['GK',1]]),
-  '4-2-3-1': layout([['FWD',1],['MID',3],['MID',2],['DEF',4],['GK',1]]),
-  '3-5-2': layout([['FWD',2],['MID',5],['DEF',3],['GK',1]]),
-  '3-4-3': layout([['FWD',3],['MID',4],['DEF',3],['GK',1]]),
-  '5-3-2': layout([['FWD',2],['MID',3],['DEF',5],['GK',1]]),
+  '4-3-3': frows([['LW','ST','RW'],['CM','CM','CAM'],['LB','CB','CB','RB'],['GK']]),
+  '4-4-2': frows([['ST','ST'],['LM','CM','CM','RM'],['LB','CB','CB','RB'],['GK']]),
+  '4-2-3-1': frows([['ST'],['CAM','LM','RM'],['CDM','CDM'],['LB','CB','CB','RB'],['GK']]),
+  '3-5-2': frows([['ST','ST'],['LM','CM','CAM','CM','RM'],['CB','CB','CB'],['GK']]),
+  '3-4-3': frows([['LW','ST','RW'],['LM','CM','CM','RM'],['CB','CB','CB'],['GK']]),
+  '5-3-2': frows([['ST','ST'],['CM','CAM','CM'],['LWB','CB','CB','CB','RWB'],['GK']]),
 };
-function layout(rows){
-  const out = []; const n = rows.length;
-  rows.forEach((r,i)=>{
-    const [role,count] = r;
-    const y = 10 + (80*i)/(n-1);
-    for(let c=0;c<count;c++){
+function frows(rws){
+  const out = []; const n = rws.length;
+  rws.forEach((r,i)=>{
+    const y = 10 + (80*i)/(n-1); const count = r.length;
+    r.forEach((code,c)=>{
       const x = count===1 ? 50 : 12 + (76*c)/(count-1);
-      out.push({x, y, role});
-    }
+      out.push({ x, y, role: code });
+    });
   });
   return out;
 }
@@ -671,7 +687,7 @@ function layout(rows){
 let state = {
   roster: [],            // {id, name, pos:[...], stats:{gp,goals,assists,mom}}
   attendance: [],
-  formation: '4-4-2',
+  formation: '4-3-3',
   curQ: 1,
   quarters: {1:{},2:{},3:{},4:{}},
   dotPos: {1:{},2:{},3:{},4:{}},
@@ -794,7 +810,7 @@ function load(){
   normalizeState();
 }
 function normalizeState(){
-  if(!state.formation) state.formation='4-4-2';
+  if(!state.formation || !FORMATIONS[state.formation]) state.formation='4-3-3';
   if(!state.curQ) state.curQ=1;
   if(!state.quarters) state.quarters={1:{},2:{},3:{},4:{}};
   QUARTERS.forEach(q=>{ if(!state.quarters[q]) state.quarters[q]={}; });
@@ -810,7 +826,10 @@ function normalizeState(){
   if(!Array.isArray(state.roster)) state.roster=[];
   // normalize roster
   state.roster.forEach(p=>{
-    if(!Array.isArray(p.pos)) p.pos = p.pos ? [p.pos] : ['MID'];
+    if(!Array.isArray(p.pos)) p.pos = p.pos ? [p.pos] : ['CM'];
+    const CATDEF = { FWD:'ST', MID:'CM', DEF:'CB', GK:'GK' };
+    p.pos = p.pos.map(c=> CATDEF[c] || c);   // 구 계열코드(FWD/MID/DEF) -> 대표 세부포지션
+    if(p.pos.length===0) p.pos = ['CM'];
     if(!p.role) p.role = '회원';
     if(typeof p.birth!=='string') p.birth = '';
     if(!p.years || typeof p.years!=='object') p.years = {};
@@ -941,7 +960,7 @@ function renderRoster(){
     else if(k==='att') r = (state.attendance.includes(a.id)?1:0)-(state.attendance.includes(b.id)?1:0);
     else if(k==='role') r = roleRank(a.role)-roleRank(b.role);
     else if(k==='age'){ const aa=ageOf(a.birth), ab=ageOf(b.birth); r = (aa==null?9999:aa)-(ab==null?9999:ab); }
-    else if(k==='pos') r = POS_ORDER.indexOf(primaryPos(a))-POS_ORDER.indexOf(primaryPos(b));
+    else if(k==='pos') r = POS_ORDER.indexOf(posCat(primaryPos(a)))-POS_ORDER.indexOf(posCat(primaryPos(b)));
     if(r===0) r = a.name.localeCompare(b.name);
     return r*dir;
   });
@@ -995,6 +1014,15 @@ function fillBirthSelects(){
   let dd='<option value="">일</option>'; for(let i=1;i<=31;i++) dd+=`<option value="${i}">${i}일</option>`; d.innerHTML=dd;
 }
 fillBirthSelects();
+function fillPosPicker(){
+  const el = document.getElementById('mPos');
+  el.innerHTML = DETAIL_GROUPS.map(([cat,kor,codes])=>
+    `<div class="pos-group"><span class="pos-glabel">${kor}</span>` +
+    codes.map(c=>`<label><input type="checkbox" value="${c}">${c}</label>`).join('') + `</div>`
+  ).join('');
+  el.querySelectorAll('input').forEach(cb=>{ cb.addEventListener('change',()=>{ cb.closest('label').classList.toggle('on', cb.checked); }); });
+}
+fillPosPicker();
 function openMember(id){
   if(!isAdmin()) return;
   editingId = id || null;
@@ -1014,9 +1042,6 @@ function openMember(id){
   setTimeout(()=>document.getElementById('mName').focus(), 30);
 }
 function closeMember(){ document.getElementById('memberPop').classList.remove('show'); editingId = null; }
-document.querySelectorAll('#mPos input').forEach(cb=>{
-  cb.addEventListener('change',()=>{ cb.closest('label').classList.toggle('on', cb.checked); });
-});
 document.getElementById('addRoleBtn').onclick = ()=>{
   const r = prompt('새 직책 이름을 입력하세요:');
   if(!r || !r.trim()) return;
@@ -1036,8 +1061,8 @@ document.getElementById('mSave').onclick = ()=>{
   const role = document.getElementById('mRole').value || '회원';
   const by=document.getElementById('mBirthY').value, bm=document.getElementById('mBirthM').value, bd=document.getElementById('mBirthD').value;
   const birth = (by&&bm&&bd) ? `${by}-${pad(bm)}-${pad(bd)}` : '';
-  let pos = POS_ORDER.filter(r=>document.querySelector(`#mPos input[value="${r}"]`).checked);
-  if(pos.length===0) pos = ['MID'];
+  let pos = [...document.querySelectorAll('#mPos input:checked')].map(cb=>cb.value);
+  if(pos.length===0) pos = ['CM'];
   if(editingId){ const p = player(editingId); if(p){ p.name=nm; p.role=role; p.birth=birth; p.pos=pos; } }
   else { state.roster.push({ id:uid(), name:nm, role, birth, pos, years:{} }); }
   closeMember(); save(); renderRoster();
@@ -1090,7 +1115,7 @@ function renderBuilder(){
     body.style.display='none';
     if(!document.getElementById('noAtt')){
       const d=document.createElement('div'); d.id='noAtt'; d.className='empty-state';
-      d.textContent='이번 경기 출석을 먼저 선택하세요.';
+      d.textContent="회원 명단에서 '참석'을 먼저 체크하세요.";
       body.parentNode.insertBefore(d, body);
     }
     return;
@@ -1131,8 +1156,8 @@ function renderBuilder(){
     dot.style.left = xy.x+'%'; dot.style.top = xy.y+'%';
     const bc = p ? badgeColor(s.role) : null;
     const hasSub = p && (state.subs[state.curQ]||{})[i];
-    dot.innerHTML = `<div class="badge"${bc?` style="--rc:${bc.bg};color:${bc.fg}"`:''}>${p?esc(p.name.slice(0,2)):POS_SHORT[s.role].slice(0,2)}</div>
-                     <div class="nm">${p?esc(p.name)+(hasSub?' ⇄':''):POS_LABEL[s.role]}</div>`;
+    dot.innerHTML = `<div class="badge"${bc?` style="--rc:${bc.bg};color:${bc.fg}"`:''}>${p?esc(p.name.slice(0,2)):posLabel(s.role).slice(0,2)}</div>
+                     <div class="nm">${p?esc(p.name)+(hasSub?' ⇄':''):posLabel(s.role)}</div>`;
     attachDotInteraction(dot, i, s.role);
     pitch.appendChild(dot);
   });
@@ -1151,7 +1176,7 @@ function renderOverview(){
       const xy = dpos[i] || { x:s.x, y:s.y };
       const bc = p ? badgeColor(s.role) : null;
       return `<div class="player-dot${p?'':' empty'}${s.role==='GK'?' gk':''}" style="left:${xy.x}%;top:${xy.y}%">
-        <div class="badge"${bc?` style="--rc:${bc.bg};color:${bc.fg}"`:''}>${p?esc(p.name.slice(0,2)):POS_SHORT[s.role].slice(0,2)}</div>
+        <div class="badge"${bc?` style="--rc:${bc.bg};color:${bc.fg}"`:''}>${p?esc(p.name.slice(0,2)):posLabel(s.role).slice(0,2)}</div>
         <div class="nm">${p?esc(p.name):''}</div></div>`;
     }).join('');
     const o = state.officials[q] || {};
@@ -1196,7 +1221,7 @@ function renderLineupSide(){
     const pid = slotMap[i]; const p = pid ? person(pid) : null;
     const subId = subMap[i]; const sub = subId ? person(subId) : null;
     let row = `<div class="lu-row ${p?'':'empty'}">
-      <span class="pos-tag pos-${s.role}" style="min-width:32px">${POS_SHORT[s.role]}</span>
+      <span class="pos-tag pos-${posCat(s.role)}" style="min-width:32px">${posLabel(s.role)}</span>
       <span class="lu-name">${p?esc(p.name):'—'}</span>
       ${p?`<button class="lu-act sub" data-subslot="${i}" title="교체 투입">⇄</button><button class="lu-act rm" data-rm="${i}" title="빼기">✕</button>`:''}
     </div>`;
@@ -1221,6 +1246,7 @@ function renderLineupSide(){
     c.onclick = ()=>{
       const id = c.dataset.place; const p = person(id);
       let target = slots.findIndex((s,i)=>!slotMap[i] && posArr(p).includes(s.role));
+      if(target<0) target = slots.findIndex((s,i)=>!slotMap[i] && posArr(p).some(cd=>posCat(cd)===posCat(s.role)));
       if(target<0) target = slots.findIndex((s,i)=>!slotMap[i]);
       if(target>=0){ slotMap[target] = id; save(); renderBuilder(); }
       else flash('빈 자리가 없습니다');
@@ -1310,7 +1336,7 @@ function openAssign(slotIdx, role){
   assignTarget = slotIdx;
   const slotMap = curSlots();
   document.getElementById('assignTitle').textContent = '선수 선택';
-  document.getElementById('assignSlot').textContent = `${state.curQ}쿼터 · ${POS_LABEL[role]} 자리`;
+  document.getElementById('assignSlot').textContent = `${state.curQ}쿼터 · ${posLabel(role)} 자리`;
   const used = new Set(Object.values(slotMap));
   const list = document.getElementById('assignList');
   const current = slotMap[slotIdx];
@@ -1389,12 +1415,17 @@ document.getElementById('autoFill').onclick = ()=>{
   const slotMap = curSlots();
   const used = new Set(Object.values(slotMap));
   let avail = attendingPeople().filter(p=>!used.has(p.id)).sort(()=>Math.random()-0.5);
-  slots.forEach((s,i)=>{
+  slots.forEach((s,i)=>{   // 1) 정확한 세부 포지션
     if(slotMap[i]) return;
     const idx = avail.findIndex(p=>posArr(p).includes(s.role));
     if(idx>=0){ slotMap[i]=avail[idx].id; avail.splice(idx,1); }
   });
-  slots.forEach((s,i)=>{ if(!slotMap[i] && avail.length){ slotMap[i]=avail.shift().id; } });
+  slots.forEach((s,i)=>{   // 2) 같은 계열
+    if(slotMap[i]) return;
+    const idx = avail.findIndex(p=>posArr(p).some(cd=>posCat(cd)===posCat(s.role)));
+    if(idx>=0){ slotMap[i]=avail[idx].id; avail.splice(idx,1); }
+  });
+  slots.forEach((s,i)=>{ if(!slotMap[i] && avail.length){ slotMap[i]=avail.shift().id; } });   // 3) 빈자리
   save(); renderBuilder();
 };
 
@@ -1480,7 +1511,7 @@ let addingYear = false;
 function renderYearBar(){
   const bar = document.getElementById('yearBar');
   const ad = isAdmin();
-  const chips = state.years.map(y=>`<button class="${state.curYear===y?'active':''}" data-year="${y}">${y}년</button>`).join('');
+  const chips = state.years.map(y=>`<button class="${state.curYear===y?'active':''}" data-year="${y}">${y}년${ad?`<span class="yr-del" data-delyear="${y}">✕</span>`:''}</button>`).join('');
   let extra = '';
   if(ad){
     extra = addingYear
@@ -1489,6 +1520,17 @@ function renderYearBar(){
   }
   bar.innerHTML = `<button class="${state.curYear==='all'?'active':''}" data-year="all">전체</button>` + chips + extra;
   bar.querySelectorAll('[data-year]').forEach(b=>{ b.onclick = ()=>{ state.curYear = b.dataset.year==='all' ? 'all' : +b.dataset.year; save(); renderRecords(); }; });
+  bar.querySelectorAll('[data-delyear]').forEach(s=>{ s.onclick = (e)=>{
+    e.stopPropagation();
+    const y = +s.dataset.delyear;
+    if(!confirm(`${y}년 기록을 삭제할까요?\n그 해의 경기 결과와 개인 기록이 모두 사라집니다.`)) return;
+    state.games = state.games.filter(g=>g.year!==y);
+    state.roster.forEach(p=>{ if(p.years) delete p.years[y]; });
+    state.years = state.years.filter(x=>x!==y);
+    if(!state.years.length) addYearToList(currentYear());
+    if(state.curYear===y) state.curYear = state.years.includes(currentYear()) ? currentYear() : state.years[0];
+    save(); renderRecords();
+  }; });
   const ab = bar.querySelector('[data-addyear]');
   if(ab) ab.onclick = ()=>{ addingYear = true; renderYearBar(); };
   const inp = document.getElementById('newYearInput');
