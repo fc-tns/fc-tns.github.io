@@ -26,6 +26,7 @@
     --draw: #8a8575;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; max-width: 100%; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
     background: var(--paper);
@@ -34,9 +35,17 @@
     -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 80px; }
+  .table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(16px);
+    background: var(--ink); color: var(--chalk); padding: 10px 18px; border-radius: 22px;
+    font-size: 13.5px; font-weight: 600; opacity: 0; pointer-events: none;
+    transition: opacity .25s, transform .25s; z-index: 200; box-shadow: 0 6px 20px rgba(0,0,0,.3); max-width: 86vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   header.app {
-    display: flex; align-items: baseline; gap: 14px;
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
     border-bottom: 2px solid var(--ink); padding-bottom: 14px; margin-bottom: 4px;
   }
   header.app h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
@@ -358,7 +367,7 @@
 
   <nav class="tabs">
     <button data-tab="roster" class="active">회원 명단</button>
-    <button data-tab="build">라인업 짜기</button>
+    <button data-tab="build">라인업</button>
     <button data-tab="rec">기록</button>
   </nav>
 
@@ -393,7 +402,6 @@
       <button class="btn ghost" id="copyPrev">이전 쿼터 복사</button>
       <button class="btn ghost" id="autoFill">빈자리 자동채우기</button>
       <button class="btn" id="saveGame">이번 경기 저장</button>
-      <span class="save-flag" id="saveFlag">저장됨 ✓</span>
     </div>
     <div id="builderBody">
       <div class="qbar" id="qbar"></div>
@@ -428,10 +436,10 @@
         <strong id="rosterCount" style="font-size:14px">회원 0명</strong>
         <button class="btn sm" id="openAddMember">+ 회원 추가</button>
       </div>
-      <table class="roster">
+      <div class="table-wrap"><table class="roster">
         <thead id="rosterHead"></thead>
         <tbody id="rosterBody"></tbody>
-      </table>
+      </table></div>
     </div>
   </section>
 
@@ -542,6 +550,8 @@
     </div>
   </div>
 </div>
+
+<div id="toast" class="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore-compat.js"></script>
@@ -1270,8 +1280,27 @@ function attachDotInteraction(dot, slotIdx, role){
     if(!dragging) return;
     dragging=false; dot.classList.remove('dragging');
     try{ dot.releasePointerCapture(e.pointerId); }catch(_){}
-    if(moved) save();
-    else openAssign(slotIdx, role);
+    if(!moved){ openAssign(slotIdx, role); return; }
+    // 드롭한 위치가 다른 자리 근처면 두 선수(및 교체)를 맞바꿈
+    const slots = FORMATIONS[state.formation];
+    const sm = state.quarters[state.curQ];
+    const subM = state.subs[state.curQ] || (state.subs[state.curQ]={});
+    const dp = state.dotPos[state.curQ];
+    const fx = (dp[slotIdx]||{}).x, fy = (dp[slotIdx]||{}).y;
+    let best=-1, bestD=1e9;
+    slots.forEach((s,j)=>{ if(j===slotIdx) return; const pos = dp[j]||{x:s.x,y:s.y}; const d=Math.hypot(pos.x-fx, pos.y-fy); if(d<bestD){ bestD=d; best=j; } });
+    if(best>=0 && bestD<11){
+      const a=sm[slotIdx], b=sm[best];
+      if(b!==undefined) sm[slotIdx]=b; else delete sm[slotIdx];
+      if(a!==undefined) sm[best]=a; else delete sm[best];
+      const sa=subM[slotIdx], sb=subM[best];
+      if(sb!==undefined) subM[slotIdx]=sb; else delete subM[slotIdx];
+      if(sa!==undefined) subM[best]=sa; else delete subM[best];
+      delete dp[slotIdx]; delete dp[best];   // 자리는 포메이션 기본 위치로 복귀
+      save(); renderBuilder();
+    } else {
+      save();   // 단순 위치 이동
+    }
   };
   dot.addEventListener('pointerup', end);
   dot.addEventListener('pointercancel', ()=>{ dragging=false; dot.classList.remove('dragging'); });
@@ -1430,8 +1459,9 @@ document.getElementById('resultSave').onclick = ()=>{
   renderBuilder();
 };
 function flash(msg){
-  const f=document.getElementById('saveFlag'); f.textContent=msg; f.classList.add('show');
-  setTimeout(()=>f.classList.remove('show'),1800);
+  const t=document.getElementById('toast'); if(!t) return;
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('show'),1800);
 }
 
 // ---------- records ----------
@@ -1582,7 +1612,7 @@ function renderIndiv(){
   let note = '';
   if(sel==='all') note = '<div class="lock-note">전체(통산) 합계입니다. 수정하려면 위에서 특정 연도를 선택하세요.</div>';
   else if(!ad) note = '<div class="lock-note">🔒 관리자 모드에서만 기록을 수정할 수 있습니다.</div>';
-  c.innerHTML = `<div class="card">${note}<table class="stats">
+  c.innerHTML = `<div class="card">${note}<div class="table-wrap"><table class="stats">
     <thead><tr>
       <th class="sortable" style="text-align:left" data-sk="name">이름${sortArrow(indivSort,'name')}</th>
       <th class="sortable" data-sk="gp">출전${sortArrow(indivSort,'gp')}</th>
@@ -1598,7 +1628,7 @@ function renderIndiv(){
         <td><input class="num" type="number" min="0" value="${st.assists}" data-pid="${p.id}" data-s="assists" ${editable?'':'disabled'}></td>
         <td><input class="num" type="number" min="0" value="${st.mom}" data-pid="${p.id}" data-s="mom" ${editable?'':'disabled'}></td>
       </tr>`; }).join('')}</tbody>
-  </table></div>`;
+  </table></div></div>`;
   if(editable) c.querySelectorAll('input.num').forEach(inp=>{
     inp.onchange = ()=>{
       const p = player(inp.dataset.pid); if(!p) return;
