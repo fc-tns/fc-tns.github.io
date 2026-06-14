@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FC TNS</title>
+<style>
+  :root {
+    --pitch: #1f6b3b;
+    --pitch-dark: #18562f;
+    --pitch-line: rgba(255,255,255,0.35);
+    --chalk: #f5f3ec;
+    --ink: #14201a;
+    --paper: #faf8f2;
+    --card: #ffffff;
+    --line: #dcd8cc;
+    --accent: #e8552c;
+    --accent-dim: #f4d9cf;
+    --gk: #f2b705;
+    --def: #3b82c4;
+    --mid: #4caa6a;
+    --fwd: #e8552c;
+    --muted: #6f6a5c;
+    --good: #2f8f4e;
+    --bad: #c0392b;
+    --draw: #8a8575;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  header.app {
+    display: flex; align-items: baseline; gap: 14px;
+    border-bottom: 2px solid var(--ink); padding-bottom: 14px; margin-bottom: 4px;
+  }
+  header.app h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+  header.app .sub { font-size: 13px; color: var(--muted); }
+
+  nav.tabs { display: flex; gap: 4px; margin: 20px 0 24px; flex-wrap: wrap; }
+  nav.tabs button {
+    font: inherit; font-size: 14px; font-weight: 600;
+    background: none; border: none; cursor: pointer;
+    padding: 8px 14px; border-radius: 8px; color: var(--muted);
+  }
+  nav.tabs button.active { background: var(--ink); color: var(--chalk); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  h2.section { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  p.hint { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px; margin-bottom: 16px;
+  }
+
+  .add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input[type=text], select {
+    font: inherit; font-size: 14px; padding: 9px 11px;
+    border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink);
+  }
+  input[type=text] { flex: 1; min-width: 140px; }
+  .pos-pick { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pos-pick label {
+    font-size: 13px; font-weight: 600; cursor: pointer; user-select: none;
+    padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: #fff; color: var(--muted); display: inline-flex; align-items: center; gap: 6px;
+  }
+  .pos-pick label.on { border-color: var(--ink); background: var(--ink); color: var(--chalk); }
+  .pos-pick input { display: none; }
+  .pos-tag + .pos-tag { margin-left: 4px; }
+
+  button.btn {
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    padding: 9px 16px; border-radius: 8px; border: 1px solid var(--ink);
+    background: var(--ink); color: var(--chalk);
+  }
+  button.btn.ghost { background: #fff; color: var(--ink); }
+  button.btn.sm { padding: 5px 10px; font-size: 12.5px; }
+
+  table.roster { width: 100%; border-collapse: collapse; margin-top: 14px; }
+  table.roster th, table.roster td {
+    text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: middle;
+  }
+  table.roster th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .pos-tag {
+    display: inline-block; font-size: 11px; font-weight: 700; color: #fff;
+    padding: 2px 8px; border-radius: 20px; min-width: 32px; text-align: center;
+  }
+  .pos-GK { background: var(--gk); color: #4a3500; }
+  .pos-DEF { background: var(--def); }
+  .pos-MID { background: var(--mid); }
+  .pos-FWD { background: var(--fwd); }
+  td.actions { text-align: right; white-space: nowrap; }
+  .iconbtn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 6px; }
+  .iconbtn:hover { color: var(--accent); }
+  .iconbtn.edit:hover { color: var(--def); }
+
+  /* attendance */
+  .att-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 8px; margin-top: 8px; }
+  .att-chip {
+    display: flex; align-items: center; gap: 8px; padding: 9px 11px;
+    border: 1px solid var(--line); border-radius: 9px; cursor: pointer; user-select: none;
+    font-size: 14px; background: #fff; transition: all .12s;
+  }
+  .att-chip.on { border-color: var(--good); background: #eef7f0; }
+  .att-chip .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--line); }
+  .att-chip.on .dot { background: var(--good); }
+  .att-chip .cnt { margin-left: auto; font-size: 11px; color: var(--muted); }
+  .att-summary { font-size: 14px; margin: 14px 0 2px; }
+  .att-summary b { font-size: 22px; }
+  .att-sub { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 16px 0 6px; }
+
+  /* quarter bar */
+  .qbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .qbar button {
+    font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+    padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line);
+    background: #fff; color: var(--muted);
+  }
+  .qbar button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .qbar button .qn { font-size: 11px; font-weight: 600; opacity: .8; margin-left: 4px; }
+
+  /* lineup builder */
+  .builder-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .pitch {
+    position: relative; width: 100%; max-width: 360px; margin: 0 auto;
+    flex: 1 1 auto; min-height: 470px;
+    background:
+      radial-gradient(120% 75% at 50% -10%, rgba(255,255,255,0.14), rgba(255,255,255,0) 55%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.045) 0 8.33%, rgba(0,0,0,0.06) 8.33% 16.66%),
+      linear-gradient(160deg, #2e8a4d 0%, #1f6437 55%, #174e2c 100%);
+    border-radius: 12px; overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), inset 0 -40px 80px rgba(0,0,0,.22), 0 6px 18px rgba(0,0,0,.18);
+  }
+  .pitch-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .pitch .line { position: absolute; border: 1.5px solid var(--pitch-line); }
+  .pitch .halfway { top: 50%; left: 0; right: 0; border-width: 1.5px 0 0 0; }
+  .pitch .circle { top: 50%; left: 50%; width: 110px; height: 110px; border-radius: 50%; transform: translate(-50%,-50%); }
+  .pitch .box-top { top: 0; left: 50%; width: 60%; height: 16%; transform: translateX(-50%); border-top: none; }
+  .pitch .box-bot { bottom: 0; left: 50%; width: 60%; height: 16%; transform: translateX(-50%); border-bottom: none; }
+  .player-dot {
+    position: absolute; transform: translate(-50%,-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    width: 72px; text-align: center;
+    cursor: grab; touch-action: none;
+  }
+  .player-dot.dragging { cursor: grabbing; z-index: 20; }
+  .player-dot.dragging .badge { box-shadow: 0 4px 12px rgba(0,0,0,.45); }
+  .player-dot .badge {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; color: #fff; letter-spacing: -.3px;
+    border: 2.5px solid rgba(255,255,255,.92);
+    box-shadow: 0 3px 8px rgba(0,0,0,.45), inset 0 2px 5px rgba(255,255,255,.30);
+    background: radial-gradient(circle at 50% 30%, rgba(255,255,255,.45), rgba(255,255,255,0) 58%), var(--rc, #7a7a7a);
+  }
+  .player-dot .nm {
+    margin-top: 3px; font-size: 10.5px; color: #fff; font-weight: 700;
+    background: rgba(8,20,12,.5); padding: 1px 7px; border-radius: 9px;
+    max-width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .player-dot.empty .badge { background: rgba(255,255,255,.16); border-style: dashed; border-color: rgba(255,255,255,.6); color: rgba(255,255,255,.7); box-shadow: none; }
+  .player-dot.empty .nm { background: transparent; opacity: .6; }
+  .pitch-hint { text-align:center; font-size:11.5px; color:var(--muted); margin-bottom:8px; }
+
+  /* 라인업 사이드 패널 (출전 명단 + 대기 + 심판/촬영) */
+  .build-main { display:flex; gap:16px; align-items:stretch; flex-wrap:wrap; }
+  .pitch-col { flex:1 1 320px; max-width:360px; display:flex; }
+  .side-col { flex:1 1 240px; min-width:230px; display:flex; flex-direction:column; gap:14px; }
+  .lineup-card h3 { font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:8px; }
+  .lu-row { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
+  .lineup-card #lineupList .lu-row:last-child { border-bottom:none; }
+  .lu-row.empty .lu-name { color:var(--muted); }
+  .lu-name { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lu-act { font:inherit; border:none; background:none; cursor:pointer; color:var(--muted); font-size:13px; padding:2px 5px; border-radius:6px; line-height:1; }
+  .lu-act.sub { margin-left:auto; font-size:14px; }
+  .lu-act.sub:hover { color:var(--def); }
+  .lu-act.rm:hover { color:var(--accent); }
+  .lu-subrow { display:flex; align-items:center; gap:7px; padding:3px 0 6px 40px; font-size:12.5px; border-bottom:1px solid var(--line); }
+  .lu-subrow .sub-arrow { font-size:11px; font-weight:700; color:var(--def); }
+  .lu-subrow .half { font-size:10.5px; font-weight:700; color:var(--def); background:#e7f0f8; border-radius:8px; padding:1px 6px; }
+  .lu-subrow .lu-act.rm { margin-left:auto; }
+  .lu-sub { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin:14px 0 8px; }
+  .off-card h3 { font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:10px; }
+  .off-row { display:flex; align-items:center; gap:8px; margin-bottom:9px; }
+  .off-row .off-label { width:42px; font-size:13px; font-weight:700; color:var(--ink); flex-shrink:0; }
+  .off-row select { flex:1; min-width:0; }
+  .mini-off { font-size:10.5px; color:var(--muted); margin-top:6px; line-height:1.45; }
+  .mini-off b { color:var(--ink); font-weight:700; }
+  .ov-summary { grid-column: 1 / -1; }
+  .ov-summary h3 { font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:10px; }
+  .ovq-list { display:flex; flex-direction:column; gap:7px; }
+  .ovq-row { display:flex; align-items:center; gap:10px; font-size:13.5px; }
+  .ovq-name { width:92px; flex-shrink:0; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ovq-bar { flex:1; height:8px; background:var(--line); border-radius:6px; overflow:hidden; }
+  .ovq-bar i { display:block; height:100%; background:var(--accent); border-radius:6px; min-width:2px; }
+  .ovq-val { width:44px; text-align:right; font-weight:800; color:var(--ink); font-size:12.5px; }
+
+  .pool { margin-top: 18px; }
+  .pool h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 8px; }
+  .pool-group-label { font-size: 12px; font-weight: 700; color: var(--muted); margin: 12px 0 7px; display: flex; align-items: center; gap: 7px; }
+  .pool-group-label:first-child { margin-top: 0; }
+  .pool-group-label .gk-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--gk); }
+  .pool-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .pool-chip {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 13px;
+    padding: 6px 10px; border: 1px solid var(--line); border-radius: 20px;
+    background: #fff; cursor: pointer;
+  }
+  .pool-chip.used { border-color: var(--accent); background: var(--accent-dim); }
+  .pool-chip.gk.used { border-color: var(--gk); background: #fdf3d3; }
+  .pool-chip .mini { font-size: 10.5px; color: var(--muted); font-weight: 700; }
+  .pool-chip .mini.hot { color: var(--accent); }
+
+  /* modals */
+  .modal-pop {
+    position: fixed; inset: 0; background: rgba(20,32,26,.45);
+    display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .modal-pop.show { display: flex; }
+  .modal-box { background: #fff; border-radius: 14px; padding: 18px; width: 100%; max-width: 380px; max-height: 82vh; overflow-y: auto; }
+  .modal-box h4 { font-size: 16px; margin-bottom: 12px; }
+  .assign-list button {
+    display: flex; width: 100%; align-items: center; gap: 9px; text-align: left;
+    font: inherit; font-size: 14px; padding: 9px 10px; border: 1px solid var(--line);
+    border-radius: 8px; background: #fff; cursor: pointer; margin-bottom: 6px;
+  }
+  .assign-list button:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .assign-box .who { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+
+  /* result form */
+  .score-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 4px 0 16px; }
+  .score-row .sbox { text-align: center; }
+  .score-row .sbox small { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  .score-row input.score { width: 64px; text-align: center; font-size: 22px; font-weight: 800; padding: 8px; }
+  .score-row .colon { font-size: 22px; font-weight: 800; color: var(--muted); }
+  .form-sub { font-size: 12px; font-weight: 700; color: var(--muted); margin: 14px 0 6px; }
+  .stat-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px dashed var(--line); }
+  .stat-row .snm { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stat-row label { font-size: 11px; color: var(--muted); }
+  .stat-row input.num { width: 44px; text-align: center; font: inherit; font-size: 14px; padding: 6px; border: 1px solid var(--line); border-radius: 7px; }
+  .mom-pick { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; }
+  .mom-pick select { flex: 1; }
+  .form-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .form-actions .btn { flex: 1; }
+
+  /* records */
+  .subtabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .subtabs button {
+    font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+    padding: 7px 16px; border-radius: 20px; border: 1px solid var(--line);
+    background: #fff; color: var(--muted);
+  }
+  .subtabs button.active { background: var(--ink); border-color: var(--ink); color: var(--chalk); }
+
+  .stat-cards { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+  .stat-cards .sc {
+    flex: 1; min-width: 88px; border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px; text-align: center; background: #fff;
+  }
+  .stat-cards .sc .v { font-size: 26px; font-weight: 800; line-height: 1.1; }
+  .stat-cards .sc .k { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .wdl { display: flex; gap: 8px; }
+  .wdl .seg { flex: 1; }
+  .wdl .seg .v.w { color: var(--good); }
+  .wdl .seg .v.d { color: var(--draw); }
+  .wdl .seg .v.l { color: var(--bad); }
+
+  .game-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .game-row:last-child { border-bottom: none; }
+  .game-row .gdate { font-size: 12.5px; color: var(--muted); width: 86px; flex-shrink: 0; }
+  .game-row .gscore { display: flex; align-items: center; gap: 6px; }
+  .game-row input.score { width: 46px; text-align: center; font: inherit; font-size: 15px; font-weight: 700; padding: 5px; border: 1px solid var(--line); border-radius: 7px; }
+  .res-badge { font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 20px; }
+  .res-W { background: #e6f4ea; color: var(--good); }
+  .res-D { background: #efece4; color: var(--draw); }
+  .res-L { background: #fbeae8; color: var(--bad); }
+
+  table.stats { width: 100%; border-collapse: collapse; }
+  table.stats th, table.stats td { padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 14px; text-align: center; }
+  table.stats th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+  table.stats td.nm { text-align: left; font-weight: 600; }
+  table.stats input.num { width: 46px; text-align: center; font: inherit; font-size: 14px; padding: 5px; border: 1px solid var(--line); border-radius: 7px; }
+  table.stats tr.gk-row td.nm::after { content: " GK"; font-size: 10px; color: var(--gk); font-weight: 800; }
+
+  .empty-state { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 14px; }
+  .row-between { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pill { font-size: 12px; padding: 3px 9px; border-radius: 20px; background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+  .save-flag { font-size: 12px; color: var(--good); opacity: 0; transition: opacity .3s; }
+  .save-flag.show { opacity: 1; }
+  label.fld { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; font-weight: 600; }
+
+  /* admin */
+  #adminBtn.locked { border-color: var(--accent); color: var(--accent); }
+  .cloud-status { font-size: 11.5px; font-weight: 700; color: var(--muted); margin-right: 4px; white-space: nowrap; }
+  .cloud-status.on { color: var(--good); }
+  .cloud-status.err { color: var(--bad); }
+  .lock-note { font-size: 12.5px; color: var(--muted); background: var(--paper); border: 1px dashed var(--line); border-radius: 8px; padding: 9px 12px; margin-bottom: 14px; }
+  .admin-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .admin-row .an { flex: 1; font-size: 14px; font-weight: 600; }
+  .admin-row .ap { font-size: 12px; color: var(--muted); }
+  .role-tag { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 20px; background: var(--paper); border: 1px solid var(--line); color: var(--muted); }
+  .role-tag.lead { background: #efe7fb; border-color: #d6c4f3; color: #6d28d9; }
+
+  /* overview (전체 보기) */
+  .overview-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; margin-bottom: 8px; }
+  .mini-card { cursor: pointer; }
+  .mini-label { font-size: 12.5px; font-weight: 700; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; }
+  .mini-label span { font-weight: 600; color: var(--muted); font-size: 11px; }
+  .mini-pitch { position: relative; width: 100%; aspect-ratio: 68/105; background: linear-gradient(var(--pitch),var(--pitch-dark)); border-radius: 8px; overflow: hidden; }
+  .mini-pitch .line { position: absolute; border: 1px solid var(--pitch-line); }
+  .mini-pitch .halfway { top: 50%; left: 0; right: 0; border-width: 1px 0 0 0; }
+  .mini-pitch .circle { top: 50%; left: 50%; width: 56px; height: 56px; border-radius: 50%; transform: translate(-50%,-50%); }
+  .mini-pitch .box-top { top: 0; left: 50%; width: 60%; height: 14%; transform: translateX(-50%); border-top: none; }
+  .mini-pitch .box-bot { bottom: 0; left: 50%; width: 60%; height: 14%; transform: translateX(-50%); border-bottom: none; }
+  .mini-pitch .player-dot { width: 42px; cursor: default; }
+  .mini-pitch .player-dot .badge { width: 22px; height: 22px; font-size: 9px; border-width: 1.5px; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .mini-pitch .player-dot .nm { font-size: 8.5px; max-width: 46px; background: transparent; padding: 0; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  .mini-card:hover .mini-pitch { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* game cards */
+  .game-card { border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; margin-bottom: 9px; }
+  .game-card .gc-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; }
+  .game-card .gc-top input.t { font: inherit; font-size: 13.5px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 7px; }
+  .game-card .gc-top .vs { color: var(--muted); font-size: 13px; }
+  .game-card .gc-top .gdate { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .game-card .gc-bot { display: flex; align-items: center; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <h1 style="color:#7c3aed">FC TNS</h1>
+    <span style="flex:1"></span>
+    <span id="cloudStatus" class="cloud-status" style="display:none;align-self:center"></span>
+    <button class="btn ghost sm" id="adminBtn" style="align-self:center">관리자</button>
+    <button class="btn ghost sm" id="adminCog" style="align-self:center;display:none">⚙</button>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="roster" class="active">회원 명단</button>
+    <button data-tab="att">이번 경기 출석</button>
+    <button data-tab="build">라인업 짜기</button>
+    <button data-tab="rec">기록</button>
+  </nav>
+
+  <!-- ATTENDANCE -->
+  <section class="panel" id="panel-att">
+    <h2 class="section">이번 경기 출석 체크</h2>
+    <p class="hint">참석하는 회원을 눌러서 선택하세요. 옆 숫자는 이번 경기에서 현재 투입된 쿼터 수입니다.</p>
+    <div class="card">
+      <div class="row-between" style="margin-bottom:12px">
+        <div class="att-summary">선택됨 <b id="attCount">0</b> 명</div>
+        <button class="btn ghost sm" id="clearAtt">전체 해제</button>
+      </div>
+      <div class="att-grid" id="attGrid"></div>
+    </div>
+  </section>
+
+  <!-- BUILDER -->
+  <section class="panel" id="panel-build">
+    <div class="builder-top">
+      <div>
+        <label class="fld">포메이션</label>
+        <select id="formationSel"></select>
+      </div>
+      <div style="flex:1"></div>
+      <button class="btn ghost" id="copyPrev">이전 쿼터 복사</button>
+      <button class="btn ghost" id="autoFill">빈자리 자동채우기</button>
+      <button class="btn" id="saveGame">이번 경기 저장</button>
+      <span class="save-flag" id="saveFlag">저장됨 ✓</span>
+    </div>
+    <div id="builderBody">
+      <div class="qbar" id="qbar"></div>
+      <div class="overview-grid" id="overview" style="display:none"></div>
+      <div id="singleView">
+        <div class="pitch-hint">선수를 눌러 교체 · 끌어서 위치 이동 · 오른쪽 ‘대기 선수’를 눌러 배치</div>
+        <div class="build-main">
+          <div class="pitch-col">
+            <div class="pitch" id="pitch"></div>
+          </div>
+          <div class="side-col">
+            <div class="card lineup-card">
+              <h3 id="lineupTitle">출전</h3>
+              <div id="lineupList"></div>
+              <div class="lu-sub">대기 선수 (눌러서 배치 · 숫자 = 투입 쿼터)</div>
+              <div id="benchList"></div>
+            </div>
+            <div class="officials" id="officials"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROSTER -->
+  <section class="panel active" id="panel-roster">
+    <h2 class="section">회원 명단</h2>
+    <p class="hint">회원과 직책을 관리합니다. ‘회원 추가’를 누르면 입력 화면이 뜹니다.</p>
+    <div class="card">
+      <div class="lock-note" id="rosterLock" style="display:none">🔒 관리자 모드에서만 명단을 수정할 수 있습니다.</div>
+      <div class="row-between" style="margin-bottom:10px">
+        <strong id="rosterCount" style="font-size:14px">회원 0명</strong>
+        <button class="btn sm" id="openAddMember">+ 회원 추가</button>
+      </div>
+      <table class="roster">
+        <thead><tr><th>이름</th><th>직책</th><th>포지션</th><th></th></tr></thead>
+        <tbody id="rosterBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- RECORDS -->
+  <section class="panel" id="panel-rec">
+    <h2 class="section">기록</h2>
+    <p class="hint">연도별로 팀·개인 기록을 관리합니다. 숫자는 직접 눌러서 수정할 수 있어요.</p>
+    <div class="qbar" id="yearBar" style="margin-bottom:12px"></div>
+    <div class="subtabs">
+      <button data-rec="team" class="active">팀 기록</button>
+      <button data-rec="indiv">개인 기록</button>
+    </div>
+    <div id="recTeam"></div>
+    <div id="recIndiv" style="display:none"></div>
+  </section>
+</div>
+
+<!-- assign popup -->
+<div class="modal-pop" id="assignPop">
+  <div class="modal-box assign-box">
+    <h4 id="assignTitle">선수 선택</h4>
+    <div class="who" id="assignSlot"></div>
+    <div class="assign-list" id="assignList"></div>
+    <button class="btn ghost sm" id="assignCancel" style="width:100%;margin-top:4px">닫기</button>
+  </div>
+</div>
+
+<!-- result form popup -->
+<div class="modal-pop" id="resultPop">
+  <div class="modal-box">
+    <h4>경기 결과 입력</h4>
+    <div style="margin-bottom:6px"><label class="fld">연도</label><select id="gameYear" style="width:120px"></select></div>
+    <div style="display:flex;gap:8px;margin-bottom:6px">
+      <div style="flex:1"><label class="fld">상대팀</label><input type="text" id="oppName" placeholder="상대팀 이름" style="width:100%;min-width:0"></div>
+      <div style="flex:1"><label class="fld">장소</label><input type="text" id="placeName" placeholder="경기 장소" style="width:100%;min-width:0"></div>
+    </div>
+    <div class="score-row">
+      <div class="sbox"><small>FC TNS</small><input type="number" min="0" class="score" id="ourScore" value="0"></div>
+      <div class="colon">:</div>
+      <div class="sbox"><small>상대</small><input type="number" min="0" class="score" id="oppScore" value="0"></div>
+    </div>
+    <div class="form-sub">선수별 골 · 도움 (선택)</div>
+    <div id="statRows"></div>
+    <div class="mom-pick">
+      <label class="fld" style="margin:0">MOM</label>
+      <select id="momSel"></select>
+    </div>
+    <div class="form-actions">
+      <button class="btn ghost" id="resultCancel">취소</button>
+      <button class="btn" id="resultSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- admin manager popup -->
+<div class="modal-pop" id="adminPop">
+  <div class="modal-box">
+    <h4>관리자 관리</h4>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px">PIN을 아는 사람만 명단·기록을 수정할 수 있어요. 여러 명 등록할 수 있습니다.</p>
+    <div id="adminList"></div>
+    <div style="display:flex;gap:6px;margin:12px 0 4px">
+      <input type="text" id="newAdminName" placeholder="이름" style="flex:1;min-width:0">
+      <input type="text" id="newAdminPin" placeholder="PIN" style="width:90px;min-width:0">
+      <button class="btn sm" id="addAdmin">추가</button>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--line);margin:14px 0 12px">
+    <div class="form-sub" style="margin-top:0">데이터 백업 / 복원</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn ghost sm" id="exportData">내보내기(다운로드)</button>
+      <button class="btn ghost sm" id="importData">불러오기</button>
+      <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+    </div>
+    <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0">'내보내기'로 전체 데이터를 파일로 저장하고, '불러오기'로 그 파일로 되돌립니다.</p>
+    <div class="form-actions">
+      <button class="btn ghost" id="removeProtect">보호 해제</button>
+      <button class="btn" id="adminClose">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- member add/edit popup -->
+<div class="modal-pop" id="memberPop">
+  <div class="modal-box">
+    <h4 id="memberTitle">회원 추가</h4>
+    <label class="fld">이름</label>
+    <input type="text" id="mName" maxlength="12" placeholder="이름" style="width:100%;min-width:0;margin-bottom:12px">
+    <label class="fld">직책</label>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <select id="mRole" style="flex:1"></select>
+      <button class="btn ghost sm" id="addRoleBtn">+ 직책</button>
+    </div>
+    <label class="fld">포지션 (여러 개 선택 가능)</label>
+    <div class="pos-pick" id="mPos" style="margin-bottom:6px">
+      <label><input type="checkbox" value="FWD">공격</label>
+      <label><input type="checkbox" value="MID">미드필더</label>
+      <label><input type="checkbox" value="DEF">수비</label>
+      <label><input type="checkbox" value="GK">골키퍼</label>
+    </div>
+    <div class="form-actions">
+      <button class="btn ghost" id="mCancel">취소</button>
+      <button class="btn" id="mSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore-compat.js"></script>
+<script>
+const POS_LABEL = { GK:'골키퍼', DEF:'수비', MID:'미드필더', FWD:'공격' };
+const POS_SHORT = { GK:'GK', DEF:'수비', MID:'미드', FWD:'공격' };
+const POS_ORDER = ['FWD','MID','DEF','GK'];
+const ROLE_BADGE = {
+  GK:  { bg:'#f2b705', fg:'#4a3500', bd:'#caa400' },
+  DEF: { bg:'#3b82c4', fg:'#ffffff', bd:'#2f6ba3' },
+  MID: { bg:'#4caa6a', fg:'#ffffff', bd:'#3a8c54' },
+  FWD: { bg:'#e8552c', fg:'#ffffff', bd:'#c4441f' },
+};
+const QUARTERS = [1,2,3,4];
+
+// 경기장 라인 마킹 (SVG, 68x105 비율)
+const PITCH_SVG = '<svg class="pitch-svg" viewBox="0 0 68 105" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">' +
+  '<g fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="0.4">' +
+  '<rect x="2" y="2" width="64" height="101" rx="1.5"/>' +
+  '<line x1="2" y1="52.5" x2="66" y2="52.5"/>' +
+  '<circle cx="34" cy="52.5" r="9.15"/>' +
+  '<rect x="13.84" y="2" width="40.32" height="16.5"/><rect x="24.84" y="2" width="18.32" height="5.5"/>' +
+  '<path d="M26.69 18.5 A9.15 9.15 0 0 1 41.31 18.5"/>' +
+  '<rect x="13.84" y="86.5" width="40.32" height="16.5"/><rect x="24.84" y="97.5" width="18.32" height="5.5"/>' +
+  '<path d="M26.69 86.5 A9.15 9.15 0 0 0 41.31 86.5"/>' +
+  '</g>' +
+  '<g fill="rgba(255,255,255,0.6)"><circle cx="34" cy="52.5" r="0.7"/><circle cx="34" cy="13" r="0.7"/><circle cx="34" cy="92" r="0.7"/></g>' +
+  '<g fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.5"><rect x="30.34" y="0.6" width="7.32" height="1.4"/><rect x="30.34" y="103" width="7.32" height="1.4"/></g>' +
+  '</svg>';
+
+// ===== 클라우드 실시간 동기화 (Firebase) =====
+// ▼ 본인 Firebase 설정값을 아래에 붙여넣으면 온라인 공유가 켜집니다. (비워두면 이 기기에만 저장)
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDGfH2c-P1EKg0w1yGKO1kMLWDjC2ezrpg",
+  authDomain: "fc-tns.firebaseapp.com",
+  projectId: "fc-tns",
+  appId: "1:975961676454:web:6aeab844fdaae240da3267"
+};
+// ▲ 여기까지만 바꾸면 됩니다
+const CLOUD_COLLECTION = 'fctns', CLOUD_DOC = 'state';
+const SHARED_KEYS = ['roster','games','years','customRoles','admins'];   // 모두가 공유하는 데이터(명단·기록·관리자)
+let cloudDoc = null, cloudReady = false, lastWriteJSON = null, cloudTimer = null;
+function cloudEnabled(){ return !!(FIREBASE_CONFIG && FIREBASE_CONFIG.projectId && typeof firebase !== 'undefined'); }
+function sharedSnapshot(){ const o={}; SHARED_KEYS.forEach(k=>{ o[k]=state[k]; }); return o; }
+function cloudSave(){
+  if(!cloudReady || !cloudDoc) return;
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(()=>{
+    const snap = sharedSnapshot();
+    lastWriteJSON = JSON.stringify(snap);
+    cloudDoc.set(snap).catch(e=>{ console.error('cloud save', e); setCloudStatus('err'); });
+  }, 400);
+}
+function setCloudStatus(s){
+  const el = document.getElementById('cloudStatus'); if(!el) return;
+  if(!cloudEnabled()){ el.style.display='none'; return; }
+  el.style.display='inline-block';
+  el.className = 'cloud-status' + (s==='on'?' on':(s==='err'?' err':''));
+  el.textContent = s==='on' ? '● 온라인 동기화' : (s==='err' ? '● 동기화 오류' : '● 연결 중…');
+}
+function initCloud(){
+  if(!cloudEnabled()){ setCloudStatus('off'); return; }
+  setCloudStatus('connecting');
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    cloudDoc = firebase.firestore().collection(CLOUD_COLLECTION).doc(CLOUD_DOC);
+    cloudDoc.onSnapshot(snap=>{
+      if(!snap.exists){ cloudReady = true; setCloudStatus('on'); cloudSave(); return; }  // 클라우드 비어있음 → 현재 데이터 업로드
+      const data = snap.data();
+      const json = JSON.stringify(data);
+      cloudReady = true; setCloudStatus('on');
+      if(json === lastWriteJSON) return;     // 내 쓰기 에코는 무시
+      const wasAdmins = hasAdmins();
+      SHARED_KEYS.forEach(k=>{ if(data[k] !== undefined) state[k] = data[k]; });
+      normalizeState();
+      if(!wasAdmins && hasAdmins()) unlocked = false;   // 원격에서 관리자 보호가 켜지면 잠금
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+      updateAdminBtn(); toggleSaveBtn(); rerenderActive();
+    }, err=>{ console.error('cloud', err); setCloudStatus('err'); });
+  } catch(e){ console.error(e); setCloudStatus('err'); }
+}
+
+function posArr(p){ return Array.isArray(p.pos) ? p.pos : (p.pos ? [p.pos] : []); }
+function primaryPos(p){ const a=posArr(p); return a[0] || 'MID'; }
+function isGK(p){ return primaryPos(p)==='GK'; }
+function posTagsHTML(p, style){
+  const a = posArr(p);
+  if(a.length===0) return '';
+  return a.map(r=>`<span class="pos-tag pos-${r}"${style?` style="${style}"`:''}>${POS_SHORT[r]}</span>`).join('');
+}
+
+// formation layouts
+const FORMATIONS = {
+  '4-4-2': layout([['FWD',2],['MID',4],['DEF',4],['GK',1]]),
+  '4-3-3': layout([['FWD',3],['MID',3],['DEF',4],['GK',1]]),
+  '4-2-3-1': layout([['FWD',1],['MID',3],['MID',2],['DEF',4],['GK',1]]),
+  '3-5-2': layout([['FWD',2],['MID',5],['DEF',3],['GK',1]]),
+  '3-4-3': layout([['FWD',3],['MID',4],['DEF',3],['GK',1]]),
+  '5-3-2': layout([['FWD',2],['MID',3],['DEF',5],['GK',1]]),
+};
+function layout(rows){
+  const out = []; const n = rows.length;
+  rows.forEach((r,i)=>{
+    const [role,count] = r;
+    const y = 10 + (80*i)/(n-1);
+    for(let c=0;c<count;c++){
+      const x = count===1 ? 50 : 12 + (76*c)/(count-1);
+      out.push({x, y, role});
+    }
+  });
+  return out;
+}
+
+let state = {
+  roster: [],            // {id, name, pos:[...], stats:{gp,goals,assists,mom}}
+  attendance: [],
+  formation: '4-4-2',
+  curQ: 1,
+  quarters: {1:{},2:{},3:{},4:{}},
+  dotPos: {1:{},2:{},3:{},4:{}},
+  officials: {},         // 쿼터별 {ref, asst, cam} (주심·부심·촬영) — 기기별 작업 상태
+  subs: {},              // 쿼터별 {slotIndex: 교체선수id} — 기기별 작업 상태
+  games: [],             // {id, date, gf, ga, opp, place}  team results
+  admins: [],            // [{name, pin}]  PIN을 아는 사람만 명단·기록 수정 가능
+  customRoles: [],       // 관리자가 추가한 직책
+  years: [],             // 기록 연도 목록 (내림차순)
+  curYear: null,         // 기록 탭에서 선택된 연도 (숫자) 또는 'all'
+};
+let recView = 'team';
+let editingId = null;
+let unlocked = false;   // session admin state
+
+// admin: 명단·기록은 PIN 잠금. 관리자 여러 명 등록 가능. 미설정이면 전체 편집 가능.
+function hasAdmins(){ return Array.isArray(state.admins) && state.admins.length>0; }
+function isAdmin(){ return !hasAdmins() || unlocked; }
+function updateAdminBtn(){
+  const b = document.getElementById('adminBtn');
+  const cog = document.getElementById('adminCog');
+  if(!hasAdmins()){ b.textContent = '🔓 관리자 설정'; b.classList.remove('locked'); cog.style.display='none'; }
+  else if(unlocked){ b.textContent = '🔓 관리자 (잠그기)'; b.classList.remove('locked'); cog.style.display='inline-block'; }
+  else { b.textContent = '🔒 관리자 잠김'; b.classList.add('locked'); cog.style.display='none'; }
+}
+function afterAdminChange(){ updateAdminBtn(); toggleSaveBtn(); rerenderActive(); }
+function rerenderActive(){
+  const t = document.querySelector('nav.tabs button.active'); if(!t) return;
+  const tab = t.dataset.tab;
+  if(tab==='roster') renderRoster();
+  else if(tab==='rec') renderRecords();
+  else if(tab==='build') renderBuilder();
+  else if(tab==='att') renderAttendance();
+}
+function toggleSaveBtn(){ document.getElementById('saveGame').style.display = isAdmin() ? 'inline-block' : 'none'; }
+document.getElementById('adminBtn').onclick = ()=>{
+  if(!hasAdmins()){ openAdminPop(); }            // 첫 관리자 등록
+  else if(unlocked){ unlocked = false; afterAdminChange(); }   // 잠그기
+  else {                                         // PIN으로 해제
+    const p = prompt('관리자 PIN을 입력하세요:');
+    if(p === null) return;
+    if(state.admins.some(a=>a.pin===p)){ unlocked = true; afterAdminChange(); }
+    else alert('PIN이 일치하지 않습니다.');
+  }
+};
+document.getElementById('adminCog').onclick = ()=>{ openAdminPop(); };
+
+function openAdminPop(){ if(!Array.isArray(state.admins)) state.admins=[]; renderAdminList(); document.getElementById('adminPop').classList.add('show'); }
+function closeAdminPop(){ document.getElementById('adminPop').classList.remove('show'); }
+function renderAdminList(){
+  const el = document.getElementById('adminList');
+  if(!hasAdmins()){ el.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">아직 관리자가 없습니다. 아래에서 추가하면 명단·기록이 잠깁니다.</div>'; return; }
+  el.innerHTML = state.admins.map((a,i)=>`<div class="admin-row">
+      <span class="an">${esc(a.name)}</span>
+      <span class="ap">PIN ${esc(a.pin)}</span>
+      <button class="iconbtn" data-rmadmin="${i}">삭제</button>
+    </div>`).join('');
+  el.querySelectorAll('[data-rmadmin]').forEach(b=>{ b.onclick = ()=>{ state.admins.splice(+b.dataset.rmadmin,1); save(); renderAdminList(); afterAdminChange(); }; });
+}
+document.getElementById('addAdmin').onclick = ()=>{
+  const nm = document.getElementById('newAdminName').value.trim();
+  const pin = document.getElementById('newAdminPin').value.trim();
+  if(!nm || !pin){ alert('이름과 PIN을 모두 입력하세요.'); return; }
+  if(!Array.isArray(state.admins)) state.admins=[];
+  if(state.admins.some(a=>a.pin===pin)){ alert('이미 사용 중인 PIN입니다.'); return; }
+  state.admins.push({ name:nm, pin });
+  document.getElementById('newAdminName').value=''; document.getElementById('newAdminPin').value='';
+  unlocked = true; save(); renderAdminList(); afterAdminChange();
+};
+document.getElementById('removeProtect').onclick = ()=>{
+  if(!hasAdmins()){ closeAdminPop(); return; }
+  if(confirm('모든 관리자 보호를 해제할까요? 누구나 수정할 수 있게 됩니다.')){ state.admins=[]; unlocked=true; save(); renderAdminList(); afterAdminChange(); }
+};
+document.getElementById('adminClose').onclick = closeAdminPop;
+document.getElementById('adminPop').onclick = e=>{ if(e.target.id==='adminPop') closeAdminPop(); };
+
+// ----- 데이터 백업 / 복원 -----
+document.getElementById('exportData').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+  const a = document.createElement('a');
+  a.href = url; a.download = `fctns_backup_${stamp}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+};
+document.getElementById('importData').onclick = ()=>{ document.getElementById('importFile').click(); };
+document.getElementById('importFile').onchange = (e)=>{
+  const file = e.target.files[0];
+  if(!file){ return; }
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try {
+      const data = JSON.parse(reader.result);
+      if(!data || typeof data!=='object' || !Array.isArray(data.roster)){ alert('올바른 백업 파일이 아닙니다.'); e.target.value=''; return; }
+      if(!confirm('현재 데이터를 이 백업으로 덮어쓸까요? (지금 내용이 대체됩니다)')){ e.target.value=''; return; }
+      state = data;
+      normalizeState();
+      save();   // 로컬 + 클라우드에 반영
+      closeAdminPop();
+      updateAdminBtn(); toggleSaveBtn(); rerenderActive();
+      alert('백업을 불러왔습니다.');
+    } catch(err){ alert('파일을 읽을 수 없습니다: ' + err.message); }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+};
+
+// ---------- persistence ----------
+const KEY = 'lineup_state_v3', OLDKEY = 'lineup_state_v2';
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){ console.error(e); } cloudSave(); }
+function newStats(){ return { gp:0, goals:0, assists:0, mom:0 }; }
+function load(){
+  let raw = null;
+  try { raw = localStorage.getItem(KEY) || localStorage.getItem(OLDKEY); } catch(e){}
+  if(raw){ try { state = JSON.parse(raw); } catch(e){} }
+  normalizeState();
+}
+function normalizeState(){
+  if(!state.formation) state.formation='4-4-2';
+  if(!state.curQ) state.curQ=1;
+  if(!state.quarters) state.quarters={1:{},2:{},3:{},4:{}};
+  QUARTERS.forEach(q=>{ if(!state.quarters[q]) state.quarters[q]={}; });
+  if(!state.dotPos) state.dotPos={1:{},2:{},3:{},4:{}};
+  QUARTERS.forEach(q=>{ if(!state.dotPos[q]) state.dotPos[q]={}; });
+  if(!state.officials || typeof state.officials!=='object') state.officials={};
+  QUARTERS.forEach(q=>{ if(!state.officials[q]) state.officials[q]={ref:'',asst:'',cam:''}; });
+  if(!state.subs || typeof state.subs!=='object') state.subs={};
+  QUARTERS.forEach(q=>{ if(!state.subs[q]) state.subs[q]={}; });
+  if(!Array.isArray(state.attendance)) state.attendance=[];
+  if(!Array.isArray(state.roster)) state.roster=[];
+  // normalize roster
+  state.roster.forEach(p=>{
+    if(!Array.isArray(p.pos)) p.pos = p.pos ? [p.pos] : ['MID'];
+    if(!p.role) p.role = '회원';
+    if(!p.years || typeof p.years!=='object') p.years = {};
+  });
+  if(!Array.isArray(state.customRoles)) state.customRoles=[];
+  // one-time migrate from old quarter-history -> games played count (현재 연도 버킷)
+  if(Array.isArray(state.history) && !state._migrated){
+    const ly = currentYear();
+    state.history.forEach(h=>{
+      const ids = new Set();
+      QUARTERS.forEach(q=>Object.values((h.quarters&&h.quarters[q])||{}).forEach(id=>ids.add(id)));
+      ids.forEach(id=>{ const p=player(id); if(p) pYear(p, ly).gp += 1; });
+    });
+    state._migrated = true;
+  }
+  delete state.history;
+  if(!Array.isArray(state.games)) state.games=[];
+  // admin migration: 단일 PIN -> 관리자 목록
+  if(state.adminPin && !Array.isArray(state.admins)){ state.admins = [{ name:'관리자', pin:state.adminPin }]; }
+  delete state.adminPin;
+  if(!Array.isArray(state.admins)) state.admins=[];
+  // ----- 연도별 기록 마이그레이션 -----
+  ensureYearList();
+  const _cy = currentYear();
+  state.roster.forEach(p=>{
+    if(!p.years || typeof p.years!=='object') p.years = {};
+    if(p.stats){                                  // 기존 누적 stats -> 현재 연도 버킷
+      const s = p.stats;
+      if(s.gp||s.goals||s.assists||s.mom){
+        const b = pYear(p, _cy);
+        b.gp += s.gp||0; b.goals += s.goals||0; b.assists += s.assists||0; b.mom += s.mom||0;
+      }
+      delete p.stats;
+    }
+  });
+  state.games.forEach(g=>{ if(typeof g.year!=='number'){ g.year = g.date ? new Date(g.date).getFullYear() : _cy; } addYearToList(g.year); });
+  state.roster.forEach(p=>{ Object.keys(p.years||{}).forEach(y=>addYearToList(parseInt(y))); });
+  if(state.years.length===0) addYearToList(_cy);
+  if(state.curYear!=='all' && (typeof state.curYear!=='number' || !state.years.includes(state.curYear))){
+    state.curYear = state.years.includes(_cy) ? _cy : state.years[0];
+  }
+}
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function player(id){ return state.roster.find(p=>p.id===id); }
+function fmtQ(n){ return Number.isInteger(n) ? String(n) : n.toFixed(1); }
+function quarterCount(id){
+  let total = 0;
+  QUARTERS.forEach(q=>{
+    const sm = state.quarters[q] || {};
+    const sub = (state.subs && state.subs[q]) || {};
+    Object.keys(sm).forEach(slot=>{
+      if(sm[slot]===id) total += sub[slot] ? 0.5 : 1;   // 교체 있으면 선발은 0.5
+      if(sub[slot]===id) total += 0.5;                  // 교체 투입 0.5
+    });
+  });
+  return total;
+}
+function placedIds(){ const s=new Set(); QUARTERS.forEach(q=>{ Object.values(state.quarters[q]||{}).forEach(id=>id&&s.add(id)); Object.values((state.subs&&state.subs[q])||{}).forEach(id=>id&&s.add(id)); }); return [...s]; }
+
+// ----- 연도별 기록 helpers -----
+function currentYear(){ return new Date().getFullYear(); }
+function ensureYearList(){ if(!Array.isArray(state.years)) state.years=[]; }
+function addYearToList(y){ if(typeof y!=='number'||isNaN(y)) return; ensureYearList(); if(!state.years.includes(y)) state.years.push(y); state.years.sort((a,b)=>b-a); }
+function pYear(p, y){ if(!p.years) p.years={}; if(!p.years[y]) p.years[y]=newStats(); return p.years[y]; }   // 편집용(없으면 생성)
+function pYearRead(p, y){ return (p.years && p.years[y]) || { gp:0, goals:0, assists:0, mom:0 }; }
+function pYearSum(p){ const s={ gp:0, goals:0, assists:0, mom:0 }; if(p.years) Object.values(p.years).forEach(o=>{ s.gp+=o.gp||0; s.goals+=o.goals||0; s.assists+=o.assists||0; s.mom+=o.mom||0; }); return s; }
+function pStatsFor(p, sel){ return sel==='all' ? pYearSum(p) : pYearRead(p, sel); }
+
+// ---------- tabs ----------
+document.querySelectorAll('nav.tabs button').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('panel-'+b.dataset.tab).classList.add('active');
+    if(b.dataset.tab==='build') renderBuilder();
+    if(b.dataset.tab==='rec') renderRecords();
+    if(b.dataset.tab==='att') renderAttendance();
+    if(b.dataset.tab==='roster') renderRoster();
+  };
+});
+
+// ---------- roster ----------
+const DEFAULT_ROLES = ['감독','코치','회원'];
+function allRoles(){ return DEFAULT_ROLES.concat(Array.isArray(state.customRoles)?state.customRoles:[]); }
+function roleRank(r){ const i = allRoles().indexOf(r); return i<0 ? 99 : i; }
+
+function renderRoster(){
+  const ad = isAdmin();
+  document.getElementById('openAddMember').style.display = ad ? 'inline-block' : 'none';
+  document.getElementById('rosterLock').style.display = ad ? 'none' : 'block';
+  document.getElementById('rosterCount').textContent = `회원 ${state.roster.length}명`;
+  const tb = document.getElementById('rosterBody');
+  if(state.roster.length===0){ tb.innerHTML = `<tr><td colspan="4" class="empty-state">아직 등록된 회원이 없습니다.</td></tr>`; return; }
+  const rows = [...state.roster].sort((a,b)=> roleRank(a.role)-roleRank(b.role));
+  tb.innerHTML = rows.map(p=>{
+    const role = p.role || '회원';
+    const lead = (role==='감독'||role==='코치');
+    return `<tr>
+      <td>${esc(p.name)}</td>
+      <td><span class="role-tag ${lead?'lead':''}">${esc(role)}</span></td>
+      <td>${posTagsHTML(p)}</td>
+      <td class="actions">${ad?`
+        <button class="iconbtn edit" data-edit="${p.id}">수정</button>
+        <button class="iconbtn" data-del="${p.id}">삭제</button>`:''}
+      </td></tr>`;
+  }).join('');
+  tb.querySelectorAll('[data-edit]').forEach(b=>{ b.onclick = ()=> openMember(b.dataset.edit); });
+  tb.querySelectorAll('[data-del]').forEach(b=>{
+    b.onclick = ()=>{
+      const id = b.dataset.del; const p = player(id);
+      if(p && !confirm(`${p.name} 회원을 삭제할까요?`)) return;
+      state.roster = state.roster.filter(x=>x.id!==id);
+      state.attendance = state.attendance.filter(x=>x!==id);
+      QUARTERS.forEach(q=>{ Object.keys(state.quarters[q]).forEach(k=>{ if(state.quarters[q][k]===id) delete state.quarters[q][k]; }); });
+      save(); renderRoster();
+    };
+  });
+}
+
+// ----- member add/edit modal -----
+function fillRoleSelect(sel){
+  sel.innerHTML = allRoles().map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('');
+}
+function openMember(id){
+  if(!isAdmin()) return;
+  editingId = id || null;
+  const p = editingId ? player(editingId) : null;
+  document.getElementById('memberTitle').textContent = p ? '회원 수정' : '회원 추가';
+  document.getElementById('mName').value = p ? p.name : '';
+  const sel = document.getElementById('mRole');
+  fillRoleSelect(sel);
+  sel.value = (p && p.role) ? p.role : '회원';
+  const set = new Set(p ? posArr(p) : []);
+  document.querySelectorAll('#mPos input').forEach(cb=>{ cb.checked = set.has(cb.value); cb.closest('label').classList.toggle('on', cb.checked); });
+  document.getElementById('memberPop').classList.add('show');
+  setTimeout(()=>document.getElementById('mName').focus(), 30);
+}
+function closeMember(){ document.getElementById('memberPop').classList.remove('show'); editingId = null; }
+document.querySelectorAll('#mPos input').forEach(cb=>{
+  cb.addEventListener('change',()=>{ cb.closest('label').classList.toggle('on', cb.checked); });
+});
+document.getElementById('addRoleBtn').onclick = ()=>{
+  const r = prompt('새 직책 이름을 입력하세요:');
+  if(!r || !r.trim()) return;
+  const name = r.trim();
+  const sel = document.getElementById('mRole');
+  if(allRoles().includes(name)){ alert('이미 있는 직책입니다.'); sel.value = name; return; }
+  if(!Array.isArray(state.customRoles)) state.customRoles = [];
+  state.customRoles.push(name); save();
+  fillRoleSelect(sel); sel.value = name;
+};
+document.getElementById('openAddMember').onclick = ()=> openMember(null);
+document.getElementById('mCancel').onclick = closeMember;
+document.getElementById('memberPop').onclick = e=>{ if(e.target.id==='memberPop') closeMember(); };
+document.getElementById('mSave').onclick = ()=>{
+  const nm = document.getElementById('mName').value.trim();
+  if(!nm){ document.getElementById('mName').focus(); return; }
+  const role = document.getElementById('mRole').value || '회원';
+  let pos = POS_ORDER.filter(r=>document.querySelector(`#mPos input[value="${r}"]`).checked);
+  if(pos.length===0) pos = ['MID'];
+  if(editingId){ const p = player(editingId); if(p){ p.name=nm; p.role=role; p.pos=pos; } }
+  else { state.roster.push({ id:uid(), name:nm, role, pos, years:{} }); }
+  closeMember(); save(); renderRoster();
+};
+document.getElementById('mName').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('mSave').click(); });
+
+// ---------- attendance ----------
+function renderAttendance(){
+  const g = document.getElementById('attGrid');
+  if(state.roster.length===0){ g.innerHTML='<div class="empty-state">먼저 회원 명단을 등록하세요.</div>'; document.getElementById('attCount').textContent='0'; return; }
+  g.innerHTML = state.roster.map(p=>{
+    const on = state.attendance.includes(p.id);
+    const qc = quarterCount(p.id);
+    return `<div class="att-chip ${on?'on':''}" data-att="${p.id}">
+      <span class="dot"></span><span>${esc(p.name)}</span><span class="cnt">${fmtQ(qc)}/4쿼터</span>
+    </div>`;
+  }).join('');
+  g.querySelectorAll('[data-att]').forEach(c=>{
+    c.onclick = ()=>{
+      const id=c.dataset.att;
+      if(state.attendance.includes(id)){
+        state.attendance=state.attendance.filter(x=>x!==id);
+        QUARTERS.forEach(q=>{ Object.keys(state.quarters[q]).forEach(k=>{ if(state.quarters[q][k]===id) delete state.quarters[q][k]; }); });
+      } else { state.attendance.push(id); }
+      save(); renderAttendance();
+    };
+  });
+  document.getElementById('attCount').textContent = state.attendance.length;
+}
+document.getElementById('clearAtt').onclick = ()=>{ state.attendance=[]; save(); renderAttendance(); };
+
+// ---------- formation ----------
+const fsel = document.getElementById('formationSel');
+Object.keys(FORMATIONS).forEach(f=>{ const o=document.createElement('option'); o.value=f; o.textContent=f; fsel.appendChild(o); });
+fsel.onchange = ()=>{ state.formation=fsel.value; state.quarters={1:{},2:{},3:{},4:{}}; state.dotPos={1:{},2:{},3:{},4:{}}; state.subs={1:{},2:{},3:{},4:{}}; save(); renderBuilder(); };
+
+// ---------- builder ----------
+let assignTarget = null;
+function curSlots(){ return state.quarters[state.curQ]; }
+
+function renderBuilder(){
+  fsel.value = state.formation;
+  const body = document.getElementById('builderBody');
+  if(state.attendance.length===0){
+    body.style.display='none';
+    if(!document.getElementById('noAtt')){
+      const d=document.createElement('div'); d.id='noAtt'; d.className='empty-state';
+      d.textContent='이번 경기 출석을 먼저 선택하세요.';
+      body.parentNode.insertBefore(d, body);
+    }
+    return;
+  }
+  const na=document.getElementById('noAtt'); if(na) na.remove();
+  body.style.display='block';
+
+  toggleSaveBtn();
+  const qbar = document.getElementById('qbar');
+  qbar.innerHTML = QUARTERS.map(q=>{
+    const filled = Object.keys(state.quarters[q]).length;
+    return `<button class="${q===state.curQ?'active':''}" data-q="${q}">${q}쿼터<span class="qn">${filled}명</span></button>`;
+  }).join('') + `<button class="${state.curQ==='all'?'active':''}" data-q="all">전체 보기</button>`;
+  qbar.querySelectorAll('[data-q]').forEach(btn=>{ btn.onclick = ()=>{ state.curQ = btn.dataset.q==='all' ? 'all' : +btn.dataset.q; save(); renderBuilder(); }; });
+
+  const single = document.getElementById('singleView');
+  const ov = document.getElementById('overview');
+  if(state.curQ==='all'){
+    single.style.display='none'; ov.style.display='grid';
+    renderOverview();
+    return;
+  }
+  single.style.display='block'; ov.style.display='none';
+  renderLineupSide();
+  renderOfficials();
+
+  const slots = FORMATIONS[state.formation];
+  const slotMap = curSlots();
+  const pitch = document.getElementById('pitch');
+  pitch.innerHTML = PITCH_SVG;
+  const dpos = state.dotPos[state.curQ];
+  slots.forEach((s,i)=>{
+    const pid = slotMap[i];
+    const p = pid ? player(pid) : null;
+    const dot = document.createElement('div');
+    dot.className = 'player-dot' + (p?'':' empty') + (s.role==='GK'?' gk':'');
+    const xy = dpos[i] || { x:s.x, y:s.y };
+    dot.style.left = xy.x+'%'; dot.style.top = xy.y+'%';
+    const bc = p ? ROLE_BADGE[s.role] : null;
+    const hasSub = p && (state.subs[state.curQ]||{})[i];
+    dot.innerHTML = `<div class="badge"${bc?` style="--rc:${bc.bg};color:${bc.fg}"`:''}>${p?esc(p.name.slice(0,2)):POS_SHORT[s.role].slice(0,2)}</div>
+                     <div class="nm">${p?esc(p.name)+(hasSub?' ⇄':''):POS_LABEL[s.role]}</div>`;
+    attachDotInteraction(dot, i, s.role);
+    pitch.appendChild(dot);
+  });
+}
+
+// 전체 보기: 4쿼터 미니 피치, 클릭하면 해당 쿼터 편집
+function renderOverview(){
+  const ov = document.getElementById('overview');
+  const slots = FORMATIONS[state.formation];
+  ov.innerHTML = QUARTERS.map(q=>{
+    const slotMap = state.quarters[q] || {};
+    const dpos = state.dotPos[q] || {};
+    const filled = Object.keys(slotMap).length;
+    const dots = slots.map((s,i)=>{
+      const pid = slotMap[i]; const p = pid ? player(pid) : null;
+      const xy = dpos[i] || { x:s.x, y:s.y };
+      const bc = p ? ROLE_BADGE[s.role] : null;
+      return `<div class="player-dot${p?'':' empty'}${s.role==='GK'?' gk':''}" style="left:${xy.x}%;top:${xy.y}%">
+        <div class="badge"${bc?` style="--rc:${bc.bg};color:${bc.fg}"`:''}>${p?esc(p.name.slice(0,2)):POS_SHORT[s.role].slice(0,2)}</div>
+        <div class="nm">${p?esc(p.name):''}</div></div>`;
+    }).join('');
+    const o = state.officials[q] || {};
+    const nm = id => { const p = id ? player(id) : null; return p ? esc(p.name) : '-'; };
+    return `<div class="mini-card" data-goq="${q}">
+      <div class="mini-label">${q}쿼터 <span>${filled}명</span></div>
+      <div class="mini-pitch">${PITCH_SVG}${dots}</div>
+      <div class="mini-off">주심 <b>${nm(o.ref)}</b> · 부심 <b>${nm(o.asst)}</b> · 촬영 <b>${nm(o.cam)}</b></div>
+    </div>`;
+  }).join('');
+
+  // 선수별 출전 쿼터 요약 (이번 경기 4쿼터 합계, 교체 0.5 반영)
+  const atts = state.attendance.map(player).filter(Boolean);
+  const ranked = atts.map(p=>({ p, q: quarterCount(p.id) })).sort((a,b)=> b.q-a.q || a.p.name.localeCompare(b.p.name));
+  const summary = `<div class="card ov-summary">
+    <h3>선수별 출전 쿼터 (이번 경기 합계 · 교체는 0.5)</h3>
+    ${ranked.length ? `<div class="ovq-list">${ranked.map(r=>`
+      <div class="ovq-row">
+        <span class="ovq-name">${esc(r.p.name)}</span>
+        <span class="ovq-bar"><i style="width:${Math.min(100,(r.q/4)*100)}%"></i></span>
+        <span class="ovq-val">${fmtQ(r.q)}/4</span>
+      </div>`).join('')}</div>` : '<div class="empty-state" style="padding:14px">출석 선수가 없습니다.</div>'}
+  </div>`;
+  ov.insertAdjacentHTML('beforeend', summary);
+
+  ov.querySelectorAll('[data-goq]').forEach(el=>{ el.onclick = ()=>{ state.curQ = +el.dataset.goq; save(); renderBuilder(); }; });
+}
+
+// 출전 명단 + 대기 선수 사이드 패널 (현재 쿼터, 실시간)
+function renderLineupSide(){
+  const lu = document.getElementById('lineupList'); if(!lu) return;
+  const slots = FORMATIONS[state.formation];
+  if(!state.quarters[state.curQ]) state.quarters[state.curQ] = {};
+  if(!state.subs[state.curQ]) state.subs[state.curQ] = {};
+  const slotMap = state.quarters[state.curQ];
+  const subMap = state.subs[state.curQ];
+  const filled = Object.values(slotMap).filter(Boolean).length;
+  const t = document.getElementById('lineupTitle'); if(t) t.textContent = `${state.curQ}쿼터 (${filled}/${slots.length})`;
+
+  // 출전: 배치된 선수 (교체 설정 가능)
+  lu.innerHTML = slots.map((s,i)=>{
+    const pid = slotMap[i]; const p = pid ? player(pid) : null;
+    const subId = subMap[i]; const sub = subId ? player(subId) : null;
+    let row = `<div class="lu-row ${p?'':'empty'}">
+      <span class="pos-tag pos-${s.role}" style="min-width:32px">${POS_SHORT[s.role]}</span>
+      <span class="lu-name">${p?esc(p.name):'—'}</span>
+      ${p?`<button class="lu-act sub" data-subslot="${i}" title="교체 투입">⇄</button><button class="lu-act rm" data-rm="${i}" title="빼기">✕</button>`:''}
+    </div>`;
+    if(p && sub){
+      row += `<div class="lu-subrow"><span class="sub-arrow">⇄ 교체</span><span class="lu-name">${esc(sub.name)}</span><span class="half">0.5</span><button class="lu-act rm" data-subclear="${i}" title="교체 해제">✕</button></div>`;
+    }
+    return row;
+  }).join('');
+  lu.querySelectorAll('[data-rm]').forEach(b=>{ b.onclick = ()=>{ delete slotMap[b.dataset.rm]; delete subMap[b.dataset.rm]; save(); renderBuilder(); }; });
+  lu.querySelectorAll('[data-subclear]').forEach(b=>{ b.onclick = ()=>{ delete subMap[b.dataset.subclear]; save(); renderBuilder(); }; });
+  lu.querySelectorAll('[data-subslot]').forEach(b=>{ b.onclick = ()=>{ openSub(+b.dataset.subslot); }; });
+
+  // 대기: 미배치 출석 선수 — 누르면 배치 (필드 먼저, 골키퍼 뒤)
+  const bench = document.getElementById('benchList'); if(!bench) return;
+  const used = new Set([...Object.values(slotMap), ...Object.values(subMap)]);
+  const avail = state.attendance.map(player).filter(Boolean).filter(p=>!used.has(p.id));
+  const order = [...avail.filter(p=>!isGK(p)), ...avail.filter(p=>isGK(p))];
+  const chip = p=>{ const qc = quarterCount(p.id); return `<span class="pool-chip ${isGK(p)?'gk':''}" data-place="${p.id}">${esc(p.name)} <span class="mini ${qc>=4?'hot':''}">${fmtQ(qc)}/4</span></span>`; };
+  bench.innerHTML = `<div class="pool-chips">${order.length ? order.map(chip).join('') : '<span style="font-size:12.5px;color:var(--muted)">대기 선수 없음 (모두 배치됨)</span>'}</div>`;
+  bench.querySelectorAll('[data-place]').forEach(c=>{
+    c.onclick = ()=>{
+      const id = c.dataset.place; const p = player(id);
+      let target = slots.findIndex((s,i)=>!slotMap[i] && posArr(p).includes(s.role));
+      if(target<0) target = slots.findIndex((s,i)=>!slotMap[i]);
+      if(target>=0){ slotMap[target] = id; save(); renderBuilder(); }
+      else flash('빈 자리가 없습니다');
+    };
+  });
+}
+
+// 심판/촬영 사이드 패널 (쿼터별)
+function emptyOfficials(){ const o={}; QUARTERS.forEach(q=>{ o[q]={ref:'',asst:'',cam:''}; }); return o; }
+function renderOfficials(){
+  const el = document.getElementById('officials'); if(!el) return;
+  if(!state.officials[state.curQ]) state.officials[state.curQ]={ref:'',asst:'',cam:''};
+  const cur = state.officials[state.curQ];
+  const att = state.attendance.map(player).filter(Boolean);
+  const opts = key => `<option value="">없음</option>` + att.map(p=>`<option value="${p.id}" ${cur[key]===p.id?'selected':''}>${esc(p.name)}</option>`).join('');
+  el.innerHTML = `<div class="card off-card">
+    <h3>${state.curQ}쿼터 · 심판 / 촬영</h3>
+    <div class="off-row"><span class="off-label">주심</span><select data-off="ref">${opts('ref')}</select></div>
+    <div class="off-row"><span class="off-label">부심</span><select data-off="asst">${opts('asst')}</select></div>
+    <div class="off-row"><span class="off-label">촬영</span><select data-off="cam">${opts('cam')}</select></div>
+  </div>`;
+  el.querySelectorAll('[data-off]').forEach(sel=>{
+    sel.onchange = ()=>{
+      if(!state.officials[state.curQ]) state.officials[state.curQ]={ref:'',asst:'',cam:''};
+      state.officials[state.curQ][sel.dataset.off] = sel.value;
+      save();
+    };
+  });
+}
+
+// click to assign / drag to reposition
+function attachDotInteraction(dot, slotIdx, role){
+  const pitch = document.getElementById('pitch');
+  let startX=0, startY=0, moved=false, dragging=false;
+  dot.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    startX=e.clientX; startY=e.clientY; moved=false; dragging=true;
+    try{ dot.setPointerCapture(e.pointerId); }catch(_){}
+    dot.classList.add('dragging');
+  });
+  dot.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    if(!moved && Math.hypot(e.clientX-startX, e.clientY-startY) < 5) return;
+    moved = true;
+    const rect = pitch.getBoundingClientRect();
+    let x = ((e.clientX-rect.left)/rect.width)*100;
+    let y = ((e.clientY-rect.top)/rect.height)*100;
+    x = Math.max(4, Math.min(96, x)); y = Math.max(4, Math.min(96, y));
+    dot.style.left = x+'%'; dot.style.top = y+'%';
+    state.dotPos[state.curQ][slotIdx] = {x, y};
+  });
+  const end = e=>{
+    if(!dragging) return;
+    dragging=false; dot.classList.remove('dragging');
+    try{ dot.releasePointerCapture(e.pointerId); }catch(_){}
+    if(moved) save();
+    else openAssign(slotIdx, role);
+  };
+  dot.addEventListener('pointerup', end);
+  dot.addEventListener('pointercancel', ()=>{ dragging=false; dot.classList.remove('dragging'); });
+}
+
+function openAssign(slotIdx, role){
+  assignTarget = slotIdx;
+  const slotMap = curSlots();
+  document.getElementById('assignTitle').textContent = '선수 선택';
+  document.getElementById('assignSlot').textContent = `${state.curQ}쿼터 · ${POS_LABEL[role]} 자리`;
+  const used = new Set(Object.values(slotMap));
+  const list = document.getElementById('assignList');
+  const current = slotMap[slotIdx];
+  const att = state.attendance.map(player).filter(Boolean);
+  let html = '';
+  if(current){ html += `<button data-pick="__clear"><span class="pos-tag" style="background:#999;min-width:0;padding:1px 7px">−</span>이 자리 비우기</button>`; }
+  html += att.filter(p=>!used.has(p.id)||p.id===current).map(p=>{
+    const qc = quarterCount(p.id);
+    return `<button data-pick="${p.id}">
+      ${posTagsHTML(p,'min-width:0;padding:1px 7px')}
+      ${esc(p.name)} <span style="margin-left:auto;font-size:12px;color:var(--muted)">${fmtQ(qc)}/4쿼터</span>
+    </button>`;
+  }).join('');
+  list.innerHTML = html || '<div class="empty-state" style="padding:16px">배치 가능한 선수가 없습니다.</div>';
+  list.querySelectorAll('[data-pick]').forEach(b=>{
+    b.onclick = ()=>{
+      const subMap = state.subs[state.curQ] || (state.subs[state.curQ]={});
+      if(b.dataset.pick==='__clear') delete slotMap[assignTarget];
+      else {
+        Object.keys(slotMap).forEach(k=>{ if(slotMap[k]===b.dataset.pick) delete slotMap[k]; });
+        slotMap[assignTarget]=b.dataset.pick;
+      }
+      delete subMap[assignTarget];   // 선발이 바뀌면 그 자리의 교체는 초기화
+      closeAssign(); save(); renderBuilder();
+    };
+  });
+  document.getElementById('assignPop').classList.add('show');
+}
+function openSub(slotIdx){
+  const slotMap = curSlots();
+  const subMap = state.subs[state.curQ] || (state.subs[state.curQ]={});
+  const starterId = slotMap[slotIdx]; if(!starterId) return;
+  const starter = player(starterId);
+  assignTarget = slotIdx;
+  document.getElementById('assignTitle').textContent = '교체 선수 선택';
+  document.getElementById('assignSlot').textContent = `${state.curQ}쿼터 · ${starter?starter.name:''} ↔ 교체 (각 0.5쿼터)`;
+  const used = new Set([...Object.values(slotMap), ...Object.values(subMap)]);
+  const curSub = subMap[slotIdx];
+  const att = state.attendance.map(player).filter(Boolean);
+  let html = '';
+  if(curSub){ html += `<button data-pick="__clear"><span class="pos-tag" style="background:#999;min-width:0;padding:1px 7px">−</span>교체 해제</button>`; }
+  html += att.filter(p=> p.id!==starterId && (!used.has(p.id)||p.id===curSub)).map(p=>{
+    const qc = quarterCount(p.id);
+    return `<button data-pick="${p.id}">
+      ${posTagsHTML(p,'min-width:0;padding:1px 7px')}
+      ${esc(p.name)} <span style="margin-left:auto;font-size:12px;color:var(--muted)">${fmtQ(qc)}/4쿼터</span>
+    </button>`;
+  }).join('');
+  const list2 = document.getElementById('assignList');
+  list2.innerHTML = html || '<div class="empty-state" style="padding:16px">교체할 선수가 없습니다.</div>';
+  list2.querySelectorAll('[data-pick]').forEach(b=>{
+    b.onclick = ()=>{
+      if(b.dataset.pick==='__clear') delete subMap[assignTarget];
+      else subMap[assignTarget] = b.dataset.pick;
+      closeAssign(); save(); renderBuilder();
+    };
+  });
+  document.getElementById('assignPop').classList.add('show');
+}
+function closeAssign(){ document.getElementById('assignPop').classList.remove('show'); }
+document.getElementById('assignCancel').onclick = closeAssign;
+document.getElementById('assignPop').onclick = e=>{ if(e.target.id==='assignPop') closeAssign(); };
+
+document.getElementById('copyPrev').onclick = ()=>{
+  if(state.curQ==='all'){ flash('먼저 쿼터를 선택하세요'); return; }
+  if(state.curQ<=1){ flash('1쿼터는 이전 쿼터가 없습니다'); return; }
+  state.quarters[state.curQ] = Object.assign({}, state.quarters[state.curQ-1]);
+  state.dotPos[state.curQ] = JSON.parse(JSON.stringify(state.dotPos[state.curQ-1]||{}));
+  state.subs[state.curQ] = Object.assign({}, state.subs[state.curQ-1]||{});
+  save(); renderBuilder();
+};
+
+document.getElementById('autoFill').onclick = ()=>{
+  if(state.curQ==='all'){ flash('먼저 쿼터를 선택하세요'); return; }
+  const slots = FORMATIONS[state.formation];
+  const slotMap = curSlots();
+  const used = new Set(Object.values(slotMap));
+  let avail = state.attendance.map(player).filter(Boolean).filter(p=>!used.has(p.id)).sort(()=>Math.random()-0.5);
+  slots.forEach((s,i)=>{
+    if(slotMap[i]) return;
+    const idx = avail.findIndex(p=>posArr(p).includes(s.role));
+    if(idx>=0){ slotMap[i]=avail[idx].id; avail.splice(idx,1); }
+  });
+  slots.forEach((s,i)=>{ if(!slotMap[i] && avail.length){ slotMap[i]=avail.shift().id; } });
+  save(); renderBuilder();
+};
+
+// ---------- save game (result form) ----------
+document.getElementById('saveGame').onclick = ()=>{
+  if(!isAdmin()){ flash('관리자만 저장할 수 있습니다'); return; }
+  const placed = placedIds();
+  if(placed.length===0){ flash('배치된 선수가 없습니다'); return; }
+  openResultForm(placed);
+};
+function openResultForm(placed){
+  document.getElementById('ourScore').value = 0;
+  document.getElementById('oppScore').value = 0;
+  document.getElementById('oppName').value = '';
+  document.getElementById('placeName').value = '';
+  const ysel = document.getElementById('gameYear');
+  const yrs = state.years.slice(); const cy = currentYear(); if(!yrs.includes(cy)) yrs.push(cy); yrs.sort((a,b)=>b-a);
+  ysel.innerHTML = yrs.map(y=>`<option value="${y}">${y}년</option>`).join('');
+  ysel.value = (typeof state.curYear==='number') ? state.curYear : cy;
+  const rows = document.getElementById('statRows');
+  const ps = placed.map(player).filter(Boolean);
+  rows.innerHTML = ps.map(p=>`
+    <div class="stat-row" data-pl="${p.id}">
+      <span class="snm">${esc(p.name)}${isGK(p)?' <span class="pos-tag pos-GK" style="min-width:0;padding:1px 6px">GK</span>':''}</span>
+      <label>골</label><input class="num" type="number" min="0" value="0" data-g>
+      <label>도움</label><input class="num" type="number" min="0" value="0" data-a>
+    </div>`).join('');
+  const mom = document.getElementById('momSel');
+  mom.innerHTML = `<option value="">없음</option>` + ps.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  document.getElementById('resultPop').classList.add('show');
+}
+function closeResult(){ document.getElementById('resultPop').classList.remove('show'); }
+document.getElementById('resultCancel').onclick = closeResult;
+document.getElementById('resultPop').onclick = e=>{ if(e.target.id==='resultPop') closeResult(); };
+document.getElementById('resultSave').onclick = ()=>{
+  const gf = Math.max(0, parseInt(document.getElementById('ourScore').value)||0);
+  const ga = Math.max(0, parseInt(document.getElementById('oppScore').value)||0);
+  const opp = document.getElementById('oppName').value.trim();
+  const place = document.getElementById('placeName').value.trim();
+  const year = parseInt(document.getElementById('gameYear').value) || currentYear();
+  addYearToList(year);
+  document.querySelectorAll('#statRows .stat-row').forEach(row=>{
+    const p = player(row.dataset.pl); if(!p) return;
+    const ys = pYear(p, year);
+    ys.gp += 1;
+    ys.goals += Math.max(0, parseInt(row.querySelector('[data-g]').value)||0);
+    ys.assists += Math.max(0, parseInt(row.querySelector('[data-a]').value)||0);
+  });
+  const momId = document.getElementById('momSel').value;
+  if(momId){ const mp = player(momId); if(mp) pYear(mp, year).mom += 1; }
+  state.games.unshift({ id:uid(), date:new Date().toISOString(), gf, ga, opp, place, year });
+  state.quarters = {1:{},2:{},3:{},4:{}};
+  state.dotPos = {1:{},2:{},3:{},4:{}};
+  state.officials = emptyOfficials();
+  state.subs = {1:{},2:{},3:{},4:{}};
+  state.curQ = 1;
+  state.attendance = [];
+  save();
+  closeResult();
+  flash('저장됨 ✓');
+  renderBuilder();
+};
+function flash(msg){
+  const f=document.getElementById('saveFlag'); f.textContent=msg; f.classList.add('show');
+  setTimeout(()=>f.classList.remove('show'),1800);
+}
+
+// ---------- records ----------
+document.querySelectorAll('.subtabs button').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('.subtabs button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); recView = b.dataset.rec;
+    document.getElementById('recTeam').style.display = recView==='team'?'block':'none';
+    document.getElementById('recIndiv').style.display = recView==='indiv'?'block':'none';
+  };
+});
+function gameResult(g){ return g.gf>g.ga ? 'W' : (g.gf===g.ga ? 'D' : 'L'); }
+function renderRecords(){ renderYearBar(); renderTeam(); renderIndiv(); }
+function yearLabel(){ return state.curYear==='all' ? '전체' : state.curYear+'년'; }
+function renderYearBar(){
+  const bar = document.getElementById('yearBar');
+  const ad = isAdmin();
+  const chips = state.years.map(y=>`<button class="${state.curYear===y?'active':''}" data-year="${y}">${y}년</button>`).join('');
+  bar.innerHTML = `<button class="${state.curYear==='all'?'active':''}" data-year="all">전체</button>` + chips
+    + (ad ? `<button data-addyear="1">+ 연도</button>` : '');
+  bar.querySelectorAll('[data-year]').forEach(b=>{ b.onclick = ()=>{ state.curYear = b.dataset.year==='all' ? 'all' : +b.dataset.year; save(); renderRecords(); }; });
+  const ab = bar.querySelector('[data-addyear]');
+  if(ab) ab.onclick = ()=>{
+    const v = prompt('추가할 연도를 입력하세요 (예: 2019):');
+    if(v === null) return;
+    const y = parseInt(v);
+    if(isNaN(y) || y<1900 || y>2100){ alert('올바른 연도를 입력하세요.'); return; }
+    addYearToList(y); state.curYear = y; save(); renderRecords();
+  };
+}
+function renderTeam(){
+  const c = document.getElementById('recTeam');
+  const ad = isAdmin();
+  const sel = state.curYear;
+  const games = state.games.filter(g=> sel==='all' ? true : g.year===sel);
+  let w=0,d=0,l=0,gf=0,ga=0;
+  games.forEach(g=>{ gf+=g.gf; ga+=g.ga; const r=gameResult(g); if(r==='W')w++; else if(r==='D')d++; else l++; });
+  const gd = gf-ga;
+  let html = `<div class="card">
+    <div class="row-between" style="margin-bottom:10px"><strong style="font-size:14px">${yearLabel()} 팀 성적</strong><span class="pill">${games.length}경기</span></div>
+    <div class="stat-cards wdl">
+      <div class="seg sc"><div class="v w">${w}</div><div class="k">승</div></div>
+      <div class="seg sc"><div class="v d">${d}</div><div class="k">무</div></div>
+      <div class="seg sc"><div class="v l">${l}</div><div class="k">패</div></div>
+    </div>
+    <div class="stat-cards" style="margin-top:10px">
+      <div class="sc"><div class="v">${gf}</div><div class="k">득점</div></div>
+      <div class="sc"><div class="v">${ga}</div><div class="k">실점</div></div>
+      <div class="sc"><div class="v">${gd>0?'+':''}${gd}</div><div class="k">득실차</div></div>
+    </div>
+  </div>`;
+  html += `<div class="card">`;
+  if(!ad) html += `<div class="lock-note">🔒 관리자 모드에서만 기록을 수정할 수 있습니다.</div>`;
+  html += `<div class="row-between" style="margin-bottom:8px">
+      <strong style="font-size:14px">경기별 결과</strong>
+      ${ad?`<button class="btn ghost sm" id="addGame">+ 경기 추가</button>`:''}
+    </div>
+    <div id="gameList">`;
+  if(games.length===0){ html += '<div class="empty-state" style="padding:20px">이 연도에 저장된 경기가 없습니다.</div>'; }
+  else {
+    html += games.map(g=>{
+      const dt=new Date(g.date); const r=gameResult(g);
+      const lab={W:'승',D:'무',L:'패'}[r];
+      const dstr = `${dt.getFullYear()}.${pad(dt.getMonth()+1)}.${pad(dt.getDate())}`;
+      if(ad){
+        return `<div class="game-card">
+          <div class="gc-top">
+            <input class="t" style="width:104px" value="${esc(g.opp||'')}" placeholder="상대팀" data-gid="${g.id}" data-f="opp">
+            <span class="vs">@</span>
+            <input class="t" style="width:104px" value="${esc(g.place||'')}" placeholder="장소" data-gid="${g.id}" data-f="place">
+            <select class="t" data-gid="${g.id}" data-f="year">${state.years.map(y=>`<option value="${y}" ${y===g.year?'selected':''}>${y}년</option>`).join('')}</select>
+            <span class="gdate">${dstr}</span>
+          </div>
+          <div class="gc-bot">
+            <input class="score" type="number" min="0" value="${g.gf}" data-gid="${g.id}" data-f="gf">
+            <span style="color:var(--muted)">:</span>
+            <input class="score" type="number" min="0" value="${g.ga}" data-gid="${g.id}" data-f="ga">
+            <span class="res-badge res-${r}">${lab}</span>
+            <span style="flex:1"></span>
+            <button class="iconbtn" data-delg="${g.id}">삭제</button>
+          </div>
+        </div>`;
+      }
+      return `<div class="game-card">
+        <div class="gc-top">
+          <strong style="font-size:14px">${esc(g.opp||'상대팀')}</strong>
+          <span class="vs">@ ${esc(g.place||'-')}</span>
+          <span class="gdate">${sel==='all'?g.year+'년 · ':''}${dstr}</span>
+        </div>
+        <div class="gc-bot">
+          <span style="font-size:16px;font-weight:800">${g.gf} : ${g.ga}</span>
+          <span class="res-badge res-${r}">${lab}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  html += `</div></div>`;
+  c.innerHTML = html;
+
+  if(ad){
+    const addBtn = document.getElementById('addGame');
+    if(addBtn) addBtn.onclick = ()=>{ const y = sel==='all'?currentYear():sel; addYearToList(y); state.games.unshift({ id:uid(), date:new Date().toISOString(), gf:0, ga:0, opp:'', place:'', year:y }); save(); renderTeam(); };
+    c.querySelectorAll('.game-card input, .game-card select').forEach(inp=>{
+      inp.onchange = ()=>{
+        const g = state.games.find(x=>x.id===inp.dataset.gid); if(!g) return;
+        const f = inp.dataset.f;
+        if(f==='gf'||f==='ga') g[f] = Math.max(0, parseInt(inp.value)||0);
+        else if(f==='year') g.year = parseInt(inp.value)||g.year;
+        else g[f] = inp.value;
+        save(); renderTeam();
+      };
+    });
+    c.querySelectorAll('[data-delg]').forEach(b=>{ b.onclick = ()=>{ const id=b.dataset.delg; state.games = state.games.filter(x=>x.id!==id); save(); renderTeam(); }; });
+  }
+}
+function renderIndiv(){
+  const c = document.getElementById('recIndiv');
+  const ad = isAdmin();
+  const sel = state.curYear;
+  const editable = ad && sel!=='all';
+  if(state.roster.length===0){ c.innerHTML='<div class="card"><div class="empty-state">등록된 회원이 없습니다.</div></div>'; return; }
+  const rows = [...state.roster].sort((a,b)=>{ const A=pStatsFor(a,sel), B=pStatsFor(b,sel); return B.goals-A.goals || B.gp-A.gp; });
+  let note = '';
+  if(sel==='all') note = '<div class="lock-note">전체(통산) 합계입니다. 수정하려면 위에서 특정 연도를 선택하세요.</div>';
+  else if(!ad) note = '<div class="lock-note">🔒 관리자 모드에서만 기록을 수정할 수 있습니다.</div>';
+  c.innerHTML = `<div class="card">${note}<table class="stats">
+    <thead><tr><th style="text-align:left">이름</th><th>출전</th><th>골</th><th>어시</th><th>MOM</th></tr></thead>
+    <tbody>${rows.map(p=>{ const st=pStatsFor(p,sel); return `
+      <tr class="${isGK(p)?'gk-row':''}">
+        <td class="nm">${esc(p.name)}</td>
+        <td><input class="num" type="number" min="0" value="${st.gp}" data-pid="${p.id}" data-s="gp" ${editable?'':'disabled'}></td>
+        <td><input class="num" type="number" min="0" value="${st.goals}" data-pid="${p.id}" data-s="goals" ${editable?'':'disabled'}></td>
+        <td><input class="num" type="number" min="0" value="${st.assists}" data-pid="${p.id}" data-s="assists" ${editable?'':'disabled'}></td>
+        <td><input class="num" type="number" min="0" value="${st.mom}" data-pid="${p.id}" data-s="mom" ${editable?'':'disabled'}></td>
+      </tr>`; }).join('')}</tbody>
+  </table></div>`;
+  if(editable) c.querySelectorAll('input.num').forEach(inp=>{
+    inp.onchange = ()=>{
+      const p = player(inp.dataset.pid); if(!p) return;
+      pYear(p, sel)[inp.dataset.s] = Math.max(0, parseInt(inp.value)||0);
+      save();
+    };
+  });
+}
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+(function init(){
+  load();
+  unlocked = !hasAdmins();   // 관리자 미설정이면 전체 편집 가능, 설정돼 있으면 잠금 상태로 시작
+  updateAdminBtn(); toggleSaveBtn();
+  renderRoster(); renderAttendance();
+  initCloud();   // Firebase 설정이 있으면 실시간 동기화 시작 (없으면 로컬 저장만)
+})();
+</script>
+</body>
+</html>
