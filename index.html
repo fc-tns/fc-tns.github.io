@@ -723,6 +723,7 @@ let state = {
   guests: [],            // 용병 [{id,name}] — 기기별, 경기 저장 시 초기화
   uniform: 'purple',     // 이번 경기 유니폼 색 (purple/white)
   place: '',             // 이번주 장소 (지명 또는 지도 링크)
+  matchTime: '',         // 이번주 경기 시간
   tactics: {},           // {personId: 전술메모} — 기기별, 경기 저장 시 초기화
   games: [],             // {id, date, gf, ga, opp, place}  team results
   admins: [],            // [{name, pin}]  PIN을 아는 사람만 명단·기록 수정 가능
@@ -852,6 +853,7 @@ function normalizeState(){
   QUARTERS.forEach(q=>{ if(!state.subs[q]) state.subs[q]={}; });
   if(state.uniform!=='purple' && state.uniform!=='white') state.uniform='purple';
   if(typeof state.place!=='string') state.place='';
+  if(typeof state.matchTime!=='string') state.matchTime='';
   if(!state.tactics || typeof state.tactics!=='object') state.tactics={};
   if(!Array.isArray(state.guests)) state.guests=[];
   if(!Array.isArray(state.attendance)) state.attendance=[];
@@ -1156,10 +1158,13 @@ function renderWeekInfo(){
         <button data-uni="purple" class="${state.uniform==='purple'?'active':''}">보라</button>
         <button data-uni="white" class="${state.uniform==='white'?'active':''}">흰색</button>
       </div></div>
+    <div class="wi-row"><span class="wi-k">시간</span><input type="datetime-local" id="timeInput" value="${esc(state.matchTime||'')}"></div>
     <div class="wi-row"><span class="wi-k">장소</span><input type="text" id="placeInput" placeholder="장소명 또는 지도 링크 붙여넣기" value="${esc(state.place||'')}"></div>
     ${mapHtml?`<div class="wi-map-wrap">${mapHtml}</div>`:''}
     <div class="wi-row top"><span class="wi-k">참여 인원</span><span class="wi-v">${names}</span></div>`;
   el.querySelectorAll('#uniToggle [data-uni]').forEach(b=>{ b.onclick = ()=>{ state.uniform = b.dataset.uni; save(); renderWeekInfo(); }; });
+  const tin = document.getElementById('timeInput');
+  if(tin){ tin.onchange = ()=>{ state.matchTime = tin.value; save(); }; }
   const pin = document.getElementById('placeInput');
   if(pin){ pin.onchange = ()=>{ state.place = pin.value; save(); renderWeekInfo(); }; }
 }
@@ -1551,6 +1556,7 @@ document.getElementById('resultSave').onclick = ()=>{
   state.guests = [];
   state.tactics = {};
   state.place = '';
+  state.matchTime = '';
   state.curQ = 1;
   state.attendance = [];
   save();
