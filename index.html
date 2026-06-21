@@ -92,6 +92,11 @@
   .rank-pos { display: flex; gap: 6px; }
   .rank-pos > div { flex: 1; min-width: 0; }
   .rank-l { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 3px; }
+  .pos-more .pm-group { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-bottom: 5px; }
+  .pos-more .pm-cat { font-size: 11px; font-weight: 700; color: var(--muted); width: 56px; flex-shrink: 0; }
+  .pos-more .pm-chk { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 4px 8px; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; user-select: none; }
+  .pos-more .pm-chk input { margin: 0; }
+  .pos-more .pm-chk:has(input:checked) { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
   .rank-pos select { width: 100%; }
 
   button.btn {
@@ -423,8 +428,8 @@
   </header>
 
   <nav class="tabs">
-    <button data-tab="roster" class="active">회원 명단</button>
-    <button data-tab="week">이번주 경기 정보</button>
+    <button data-tab="week" class="active">이번주 경기 정보</button>
+    <button data-tab="roster">회원 명단</button>
     <button data-tab="build">라인업</button>
     <button data-tab="rec">기록</button>
   </nav>
@@ -443,7 +448,7 @@
   </section>
 
   <!-- WEEK INFO -->
-  <section class="panel" id="panel-week">
+  <section class="panel active" id="panel-week">
     <h2 class="section">이번주 경기 정보</h2>
     <p class="hint">유니폼·장소·참여 인원을 한눈에. 장소는 지도로도 볼 수 있어요.</p>
     <div class="card week-info" id="weekInfo"></div>
@@ -485,7 +490,7 @@
   </section>
 
   <!-- ROSTER -->
-  <section class="panel active" id="panel-roster">
+  <section class="panel" id="panel-roster">
     <h2 class="section">회원 명단</h2>
     <p class="hint">회원과 직책을 관리합니다. ‘회원 추가’를 누르면 입력 화면이 뜹니다.</p>
     <div class="card">
@@ -595,12 +600,14 @@
       <select id="mBirthM" style="flex:1"></select>
       <select id="mBirthD" style="flex:1"></select>
     </div>
-    <label class="fld">선호 포지션 (1~3순위)</label>
-    <div class="rank-pos" style="margin-bottom:6px">
+    <label class="fld">선호 포지션 (1~3순위 · 명단에 표시됨)</label>
+    <div class="rank-pos" style="margin-bottom:10px">
       <div><div class="rank-l">1순위</div><select id="mPos1"></select></div>
       <div><div class="rank-l">2순위</div><select id="mPos2"></select></div>
       <div><div class="rank-l">3순위</div><select id="mPos3"></select></div>
     </div>
+    <label class="fld">그 외 가능 포지션 (선택 · 명단엔 표시 안 됨)</label>
+    <div id="mPosMore" class="pos-more" style="margin-bottom:6px"></div>
     <div class="form-actions">
       <button class="btn ghost" id="mCancel">취소</button>
       <button class="btn" id="mSave">저장</button>
@@ -713,7 +720,7 @@ function posArr(p){ return Array.isArray(p.pos) ? p.pos : (p.pos ? [p.pos] : [])
 function primaryPos(p){ const a=posArr(p); return a[0] || 'CM'; }
 function isGK(p){ return posCat(primaryPos(p))==='GK'; }
 function posTagsHTML(p, style){
-  const a = posArr(p);
+  const a = posArr(p).slice(0,3);   // 1~3순위만 표시
   if(a.length===0) return '';
   return a.map(r=>`<span class="pos-tag pos-${posCat(r)}"${style?` style="${style}"`:''}>${posLabel(r)}</span>`).join('');
 }
@@ -991,8 +998,10 @@ function ageOf(birth){
   if(m<0 || (m===0 && t.getDate()<b.getDate())) a--;
   return (a>=0 && a<150) ? a : null;
 }
-const DEFAULT_ROLES = ['감독','코치','회원'];
-function allRoles(){ return DEFAULT_ROLES.concat(Array.isArray(state.customRoles)?state.customRoles:[]); }
+const ROLE_TOP = ['회장','감독','코치'];   // 상위 직책 (순서대로 위로)
+const DEFAULT_ROLES = ROLE_TOP.concat(['회원']);
+// 정렬·드롭다운 순서: 회장 → 감독 → 코치 → (추가 직책) → 회원(맨 아래)
+function allRoles(){ return ROLE_TOP.concat(Array.isArray(state.customRoles)?state.customRoles:[]).concat(['회원']); }
 function roleRank(r){ const i = allRoles().indexOf(r); return i<0 ? 99 : i; }
 
 // ----- 정렬 상태/헬퍼 -----
@@ -1024,7 +1033,7 @@ function renderRoster(){
     const k = rosterSort.key; let r = 0;
     if(k==='name') r = a.name.localeCompare(b.name);
     else if(k==='att') r = (state.attendance.includes(a.id)?1:0)-(state.attendance.includes(b.id)?1:0);
-    else if(k==='role') r = roleRank(a.role)-roleRank(b.role);
+    else if(k==='role'){ r = roleRank(a.role)-roleRank(b.role); if(r===0){ const aa=ageOf(a.birth), ab=ageOf(b.birth); r = (ab==null?-1:ab)-(aa==null?-1:aa); } }   // 직책 같으면 나이 많은 순
     else if(k==='age'){ const aa=ageOf(a.birth), ab=ageOf(b.birth); r = (aa==null?9999:aa)-(ab==null?9999:ab); }
     else if(k==='pos') r = POS_ORDER.indexOf(posCat(primaryPos(a)))-POS_ORDER.indexOf(posCat(primaryPos(b)));
     if(r===0) r = a.name.localeCompare(b.name);
@@ -1032,7 +1041,7 @@ function renderRoster(){
   });
   tb.innerHTML = rows.map(p=>{
     const role = p.role || '회원';
-    const lead = (role==='감독'||role==='코치');
+    const lead = (role==='회장'||role==='감독'||role==='코치');
     const age = ageOf(p.birth);
     const on = state.attendance.includes(p.id);
     return `<tr>
@@ -1086,6 +1095,13 @@ function fillPosSelect(sel){
   sel.innerHTML = h;
 }
 ['mPos1','mPos2','mPos3'].forEach(id=>fillPosSelect(document.getElementById(id)));
+function fillPosMore(checked){
+  const box = document.getElementById('mPosMore');
+  box.innerHTML = DETAIL_GROUPS.map(([cat,kor,codes])=>
+    `<div class="pm-group"><span class="pm-cat">${kor}</span>` +
+    codes.map(c=>`<label class="pm-chk"><input type="checkbox" value="${c}" ${checked.has(c)?'checked':''}>${c}</label>`).join('') +
+    `</div>`).join('');
+}
 function openMember(id){
   if(!isAdmin()) return;
   editingId = id || null;
@@ -1099,11 +1115,11 @@ function openMember(id){
   document.getElementById('mBirthY').value = bp[0] || '';
   document.getElementById('mBirthM').value = bp[1] ? String(+bp[1]) : '';
   document.getElementById('mBirthD').value = bp[2] ? String(+bp[2]) : '';
-  const set = new Set(p ? posArr(p) : []);
   const pa = p ? posArr(p) : [];
   document.getElementById('mPos1').value = pa[0]||'';
   document.getElementById('mPos2').value = pa[1]||'';
   document.getElementById('mPos3').value = pa[2]||'';
+  fillPosMore(new Set(pa.slice(3)));   // 4순위 이후는 '그 외 가능 포지션' 체크로
   document.getElementById('memberPop').classList.add('show');
   setTimeout(()=>document.getElementById('mName').focus(), 30);
 }
@@ -1127,8 +1143,9 @@ document.getElementById('mSave').onclick = ()=>{
   const role = document.getElementById('mRole').value || '회원';
   const by=document.getElementById('mBirthY').value, bm=document.getElementById('mBirthM').value, bd=document.getElementById('mBirthD').value;
   const birth = (by&&bm&&bd) ? `${by}-${pad(bm)}-${pad(bd)}` : '';
-  let pos = ['mPos1','mPos2','mPos3'].map(id=>document.getElementById(id).value).filter(Boolean);
-  pos = [...new Set(pos)];
+  const ranked = ['mPos1','mPos2','mPos3'].map(id=>document.getElementById(id).value).filter(Boolean);
+  const extras = [...document.querySelectorAll('#mPosMore input:checked')].map(c=>c.value);
+  let pos = [...new Set([...ranked, ...extras])];   // 1~3순위 먼저, 그 외 포지션 뒤에
   if(pos.length===0) pos = ['CM'];
   if(editingId){ const p = player(editingId); if(p){ p.name=nm; p.role=role; p.birth=birth; p.pos=pos; } }
   else { state.roster.push({ id:uid(), name:nm, role, birth, pos, years:{} }); }
@@ -1797,7 +1814,7 @@ function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
   load();
   unlocked = !hasAdmins();   // 관리자 미설정이면 전체 편집 가능, 설정돼 있으면 잠금 상태로 시작
   updateAdminBtn(); toggleSaveBtn();
-  renderRoster(); renderAttendance();
+  renderRoster(); renderAttendance(); renderWeekInfo();
   initCloud();   // Firebase 설정이 있으면 실시간 동기화 시작 (없으면 로컬 저장만)
 })();
 </script>
