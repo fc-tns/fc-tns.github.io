@@ -488,10 +488,8 @@
         <select id="formationSel"></select>
       </div>
       <div style="flex:1"></div>
-      <button class="btn ghost" id="copyPrev">이전 쿼터 복사</button>
       <button class="btn ghost" id="autoFill">빈자리 자동채우기</button>
       <button class="btn ghost" id="resetPos">위치 초기화</button>
-      <button class="btn" id="saveGame">이번 경기 저장</button>
     </div>
     <div id="builderBody">
       <div class="qbar" id="qbar"></div>
@@ -817,7 +815,7 @@ function rerenderActive(){
   else if(tab==='att') renderAttendance();
   else if(tab==='week') renderWeekInfo();
 }
-function toggleSaveBtn(){ document.getElementById('saveGame').style.display = isAdmin() ? 'inline-block' : 'none'; }
+function toggleSaveBtn(){ const b=document.getElementById('saveGame'); if(b) b.style.display = isAdmin() ? 'inline-block' : 'none'; }
 document.getElementById('adminBtn').onclick = ()=>{
   if(!hasAdmins()){ openAdminPop(); }            // 첫 관리자 등록
   else if(unlocked){ unlocked = false; afterAdminChange(); }   // 잠그기
@@ -1269,10 +1267,8 @@ function renderBuilder(){
 
   toggleSaveBtn();
   const qbar = document.getElementById('qbar');
-  qbar.innerHTML = QUARTERS.map(q=>{
-    const filled = Object.keys(state.quarters[q]).length;
-    return `<button class="${q===state.curQ?'active':''}" data-q="${q}">${q}쿼터<span class="qn">${filled}명</span></button>`;
-  }).join('') + `<button class="${state.curQ==='all'?'active':''}" data-q="all">전체 보기</button>`;
+  qbar.innerHTML = `<button class="${state.curQ==='all'?'active':''}" data-q="all">전체 보기</button>`
+    + QUARTERS.map(q=>`<button class="${q===state.curQ?'active':''}" data-q="${q}">${q}쿼터</button>`).join('');
   qbar.querySelectorAll('[data-q]').forEach(btn=>{ btn.onclick = ()=>{ state.curQ = btn.dataset.q==='all' ? 'all' : +btn.dataset.q; save(); renderBuilder(); }; });
 
   const single = document.getElementById('singleView');
@@ -1557,15 +1553,6 @@ function closeAssign(){ document.getElementById('assignPop').classList.remove('s
 document.getElementById('assignCancel').onclick = ()=>{ closeAssign(); renderBuilder(); };
 document.getElementById('assignPop').onclick = e=>{ if(e.target.id==='assignPop'){ closeAssign(); renderBuilder(); } };
 
-document.getElementById('copyPrev').onclick = ()=>{
-  if(state.curQ==='all'){ flash('먼저 쿼터를 선택하세요'); return; }
-  if(state.curQ<=1){ flash('1쿼터는 이전 쿼터가 없습니다'); return; }
-  state.quarters[state.curQ] = Object.assign({}, state.quarters[state.curQ-1]);
-  state.dotPos[state.curQ] = JSON.parse(JSON.stringify(state.dotPos[state.curQ-1]||{}));
-  state.subs[state.curQ] = Object.assign({}, state.subs[state.curQ-1]||{});
-  save(); renderBuilder();
-};
-
 document.getElementById('autoFill').onclick = ()=>{
   if(state.curQ==='all'){ flash('먼저 쿼터를 선택하세요'); return; }
   const slots = FORMATIONS[state.formation];
@@ -1594,7 +1581,8 @@ document.getElementById('resetPos').onclick = ()=>{
 };
 
 // ---------- save game (result form) ----------
-document.getElementById('saveGame').onclick = ()=>{
+const _saveGameBtn = document.getElementById('saveGame');
+if(_saveGameBtn) _saveGameBtn.onclick = ()=>{
   if(!isAdmin()){ flash('관리자만 저장할 수 있습니다'); return; }
   const placed = placedIds();
   if(placed.length===0){ flash('배치된 선수가 없습니다'); return; }
