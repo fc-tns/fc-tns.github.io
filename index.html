@@ -16,10 +16,10 @@
     --line: #dcd8cc;
     --accent: #e8552c;
     --accent-dim: #f4d9cf;
-    --gk: #f2b705;
-    --def: #3b82c4;
-    --mid: #4caa6a;
-    --fwd: #e8552c;
+    --gk: #f08c1d;
+    --def: #2f9e54;
+    --mid: #2f7dd1;
+    --fwd: #e23b3b;
     --muted: #6f6a5c;
     --good: #2f8f4e;
     --bad: #c0392b;
@@ -92,11 +92,14 @@
   .rank-pos { display: flex; gap: 6px; }
   .rank-pos > div { flex: 1; min-width: 0; }
   .rank-l { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 3px; }
-  .pos-more .pm-group { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-bottom: 5px; }
-  .pos-more .pm-cat { font-size: 11px; font-weight: 700; color: var(--muted); width: 56px; flex-shrink: 0; }
-  .pos-more .pm-chk { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 4px 8px; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; user-select: none; }
-  .pos-more .pm-chk input { margin: 0; }
-  .pos-more .pm-chk:has(input:checked) { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+  .pos-more { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pos-more .pm-chk { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; font-size: 12px; font-weight: 700; padding: 7px 11px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; user-select: none; color: var(--muted); background: #fff; transition: all .1s; }
+  .pos-more .pm-chk input { display: none; }
+  .pos-more .pm-chk.on { color: #fff; border-color: transparent; }
+  .pos-more .pm-chk.on.pm-FWD { background: var(--fwd); }
+  .pos-more .pm-chk.on.pm-MID { background: var(--mid); }
+  .pos-more .pm-chk.on.pm-DEF { background: var(--def); }
+  .pos-more .pm-chk.on.pm-GK { background: var(--gk); }
   .rank-pos select { width: 100%; }
 
   button.btn {
@@ -464,6 +467,7 @@
       <div style="flex:1"></div>
       <button class="btn ghost" id="copyPrev">이전 쿼터 복사</button>
       <button class="btn ghost" id="autoFill">빈자리 자동채우기</button>
+      <button class="btn ghost" id="resetPos">위치 초기화</button>
       <button class="btn" id="saveGame">이번 경기 저장</button>
     </div>
     <div id="builderBody">
@@ -639,14 +643,14 @@ const DETAIL_GROUPS = [
 function posCat(code){ return DETAIL_POS[code] || (POS_ORDER.includes(code) ? code : 'MID'); }
 function posLabel(code){ return DETAIL_POS[code] ? code : (POS_SHORT[code] || code); }
 const ROLE_BADGE = {
-  GK:  { bg:'#f2b705', fg:'#4a3500', bd:'#caa400' },
-  DEF: { bg:'#3b82c4', fg:'#ffffff', bd:'#2f6ba3' },
-  MID: { bg:'#4caa6a', fg:'#ffffff', bd:'#3a8c54' },
-  FWD: { bg:'#e8552c', fg:'#ffffff', bd:'#c4441f' },
+  GK:  { bg:'#f08c1d', fg:'#ffffff', bd:'#cf760f' },   // 골키퍼 주황
+  DEF: { bg:'#2f9e54', fg:'#ffffff', bd:'#268044' },   // 수비 초록
+  MID: { bg:'#2f7dd1', fg:'#ffffff', bd:'#2667ad' },   // 미드필더 파랑
+  FWD: { bg:'#e23b3b', fg:'#ffffff', bd:'#c12e2e' },   // 공격 빨강
 };
-// 유니폼 색 (보라/흰). 골키퍼는 구분을 위해 금색 유지.
 const UNIFORM = { purple:{ bg:'#7c3aed', fg:'#ffffff' }, white:{ bg:'#f4f4f5', fg:'#14201a' } };
-function badgeColor(role){ if(posCat(role)==='GK') return ROLE_BADGE.GK; const u = UNIFORM[state.uniform] || UNIFORM.purple; return { bg:u.bg, fg:u.fg }; }
+// 핏치 마커는 포지션 계열 색(공격 빨강 / 미드 파랑 / 수비 초록 / GK 주황)
+function badgeColor(role){ return ROLE_BADGE[posCat(role)] || ROLE_BADGE.MID; }
 const QUARTERS = [1,2,3,4];
 
 // 경기장 라인 마킹 (SVG, 68x105 비율)
@@ -1097,10 +1101,14 @@ function fillPosSelect(sel){
 ['mPos1','mPos2','mPos3'].forEach(id=>fillPosSelect(document.getElementById(id)));
 function fillPosMore(checked){
   const box = document.getElementById('mPosMore');
-  box.innerHTML = DETAIL_GROUPS.map(([cat,kor,codes])=>
-    `<div class="pm-group"><span class="pm-cat">${kor}</span>` +
-    codes.map(c=>`<label class="pm-chk"><input type="checkbox" value="${c}" ${checked.has(c)?'checked':''}>${c}</label>`).join('') +
-    `</div>`).join('');
+  const codes = DETAIL_GROUPS.flatMap(g=>g[2]);   // 모든 세부 포지션을 한 줄 흐름으로
+  box.innerHTML = codes.map(c=>{
+    const on = checked.has(c) ? ' on' : '';
+    return `<label class="pm-chk pm-${posCat(c)}${on}"><input type="checkbox" value="${c}" ${checked.has(c)?'checked':''}>${c}</label>`;
+  }).join('');
+  box.querySelectorAll('.pm-chk input').forEach(inp=>{
+    inp.onchange = ()=> inp.closest('.pm-chk').classList.toggle('on', inp.checked);
+  });
 }
 function openMember(id){
   if(!isAdmin()) return;
@@ -1550,6 +1558,13 @@ document.getElementById('autoFill').onclick = ()=>{
   });
   slots.forEach((s,i)=>{ if(!slotMap[i] && avail.length){ slotMap[i]=avail.shift().id; } });   // 3) 빈자리
   save(); renderBuilder();
+};
+
+document.getElementById('resetPos').onclick = ()=>{
+  if(state.curQ==='all'){ flash('먼저 쿼터를 선택하세요'); return; }
+  state.dotPos[state.curQ] = {};   // 끌어서 옮긴 위치 → 포메이션 기본 위치로 복귀
+  save(); renderBuilder();
+  flash(`${state.curQ}쿼터 위치를 초기화했어요`);
 };
 
 // ---------- save game (result form) ----------
