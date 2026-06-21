@@ -67,7 +67,8 @@
 
   .card {
     background: var(--card); border: 1px solid var(--line);
-    border-radius: 12px; padding: 18px; margin-bottom: 16px;
+    border-radius: 14px; padding: 18px; margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(20,32,26,.04), 0 4px 16px rgba(20,32,26,.05);
   }
 
   .add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -223,6 +224,8 @@
   .off-row select { flex:1; min-width:0; }
   .mini-off { font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.5; }
   .mini-off b { color:var(--ink); font-weight:700; }
+  .mini-sub { font-size:11.5px; color:var(--def); margin-top:4px; line-height:1.45; font-weight:600; }
+  .mini-sub b { color:var(--ink); }
   .ov-summary { grid-column: 1 / -1; }
   .ov-summary h3 { font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:10px; }
   .ovq-list { display:flex; flex-direction:column; gap:7px; }
@@ -383,13 +386,28 @@
   .mini-pitch .player-dot .nm { font-size: 11px; font-weight: 700; max-width: 60px; background: rgba(8,20,12,.5); padding: 0 4px; border-radius: 6px; }
   .mini-card:hover .mini-pitch { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-  /* game cards */
-  .game-card { border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; margin-bottom: 9px; }
-  .game-card .gc-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; }
-  .game-card .gc-top input.t { font: inherit; font-size: 13.5px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 7px; }
-  .game-card .gc-top .vs { color: var(--muted); font-size: 13px; }
-  .game-card .gc-top .gdate { margin-left: auto; font-size: 12px; color: var(--muted); }
-  .game-card .gc-bot { display: flex; align-items: center; gap: 8px; }
+  /* game cards (보기) */
+  .gcard { display: flex; align-items: stretch; gap: 12px; border: 1px solid var(--line); border-radius: 11px; padding: 10px 12px; margin-bottom: 8px; background: #fff; }
+  .gcard .gcard-res { flex-shrink: 0; width: 40px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; }
+  .gcard.res-W .gcard-res { background: #e6f4ea; color: var(--good); }
+  .gcard.res-D .gcard-res { background: #efece4; color: var(--draw); }
+  .gcard.res-L .gcard-res { background: #fbeae8; color: var(--bad); }
+  .gcard .gcard-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+  .gcard .gcard-l1 { display: flex; align-items: baseline; gap: 8px; }
+  .gcard .gcard-opp { font-size: 14.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gcard .gcard-score { margin-left: auto; font-size: 16px; font-weight: 800; flex-shrink: 0; }
+  .gcard .gcard-l2 { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* game cards (편집) */
+  .gcard.edit { flex-direction: column; gap: 8px; }
+  .ge-grid { display: grid; grid-template-columns: 1.3fr 1.3fr .9fr; gap: 7px; }
+  .ge-f { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .ge-f > span { font-size: 10.5px; font-weight: 700; color: var(--muted); }
+  .ge-f input.t, .ge-f select { font: inherit; font-size: 13px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; width: 100%; min-width: 0; background: #fff; }
+  .ge-score { display: flex; align-items: center; gap: 8px; }
+  .ge-score input.score { width: 48px; text-align: center; font: inherit; font-size: 16px; font-weight: 800; padding: 6px; border: 1px solid var(--line); border-radius: 8px; }
+  .ge-score .res-badge { flex-shrink: 0; }
+  .ge-score .ge-date { font-size: 11.5px; color: var(--muted); margin-left: auto; }
+  .ge-score .del { color: var(--bad); }
 
   /* ---- mobile ---- */
   @media (max-width: 560px) {
@@ -417,6 +435,11 @@
     .att-toggle { font-size: 11px; padding: 3px 8px; }
     .role-tag { font-size: 10.5px; padding: 2px 7px; }
     td.actions .iconbtn { font-size: 11.5px; padding: 3px 3px; }
+    /* 기록 표도 한 화면에 */
+    table.stats th, table.stats td { padding: 7px 3px; font-size: 12.5px; }
+    table.stats input.num { width: 40px; font-size: 13px; padding: 4px; }
+    .ge-grid { grid-template-columns: 1fr 1fr; }
+    .ge-grid .ge-f:nth-child(3) { grid-column: 1 / -1; }
   }
 </style>
 </head>
@@ -1303,9 +1326,12 @@ function renderOverview(){
     }).join('');
     const o = state.officials[q] || {};
     const nm = id => { const p = id ? player(id) : null; return p ? esc(p.name) : '-'; };
+    const subMap = state.subs[q] || {};
+    const subList = slots.map((s,i)=>{ const st=slotMap[i], su=subMap[i]; if(st&&su){ const sp=person(st), up=person(su); return `<b>${sp?esc(sp.name):'?'}</b>↔<b>${up?esc(up.name):'?'}</b>`; } return null; }).filter(Boolean);
     return `<div class="mini-card" data-goq="${q}">
       <div class="mini-label">${q}쿼터 <span>${filled}명</span></div>
       <div class="mini-pitch">${PITCH_SVG}${dots}</div>
+      ${subList.length?`<div class="mini-sub">🔄 ${subList.join(' · ')}</div>`:''}
       <div class="mini-off">주심 <b>${nm(o.ref)}</b> · 부심 <b>${nm(o.asst)}</b> · 촬영 <b>${nm(o.cam)}</b></div>
     </div>`;
   }).join('');
@@ -1726,33 +1752,27 @@ function renderTeam(){
       const lab={W:'승',D:'무',L:'패'}[r];
       const dstr = `${dt.getFullYear()}.${pad(dt.getMonth()+1)}.${pad(dt.getDate())}`;
       if(ad){
-        return `<div class="game-card">
-          <div class="gc-top">
-            <input class="t" style="width:104px" value="${esc(g.opp||'')}" placeholder="상대팀" data-gid="${g.id}" data-f="opp">
-            <span class="vs">@</span>
-            <input class="t" style="width:104px" value="${esc(g.place||'')}" placeholder="장소" data-gid="${g.id}" data-f="place">
-            <select class="t" data-gid="${g.id}" data-f="year">${state.years.map(y=>`<option value="${y}" ${y===g.year?'selected':''}>${y}년</option>`).join('')}</select>
-            <span class="gdate">${dstr}</span>
+        return `<div class="gcard edit">
+          <div class="ge-grid">
+            <label class="ge-f"><span>상대팀</span><input class="t" value="${esc(g.opp||'')}" placeholder="상대팀" data-gid="${g.id}" data-f="opp"></label>
+            <label class="ge-f"><span>장소</span><input class="t" value="${esc(g.place||'')}" placeholder="장소" data-gid="${g.id}" data-f="place"></label>
+            <label class="ge-f"><span>연도</span><select data-gid="${g.id}" data-f="year">${state.years.map(y=>`<option value="${y}" ${y===g.year?'selected':''}>${y}년</option>`).join('')}</select></label>
           </div>
-          <div class="gc-bot">
+          <div class="ge-score">
             <input class="score" type="number" min="0" value="${g.gf}" data-gid="${g.id}" data-f="gf">
             <span style="color:var(--muted)">:</span>
             <input class="score" type="number" min="0" value="${g.ga}" data-gid="${g.id}" data-f="ga">
             <span class="res-badge res-${r}">${lab}</span>
-            <span style="flex:1"></span>
-            <button class="iconbtn" data-delg="${g.id}">삭제</button>
+            <span class="ge-date">${dstr}</span>
+            <button class="iconbtn del" data-delg="${g.id}">삭제</button>
           </div>
         </div>`;
       }
-      return `<div class="game-card">
-        <div class="gc-top">
-          <strong style="font-size:14px">${esc(g.opp||'상대팀')}</strong>
-          <span class="vs">@ ${esc(g.place||'-')}</span>
-          <span class="gdate">${sel==='all'?g.year+'년 · ':''}${dstr}</span>
-        </div>
-        <div class="gc-bot">
-          <span style="font-size:16px;font-weight:800">${g.gf} : ${g.ga}</span>
-          <span class="res-badge res-${r}">${lab}</span>
+      return `<div class="gcard res-${r}">
+        <div class="gcard-res">${lab}</div>
+        <div class="gcard-body">
+          <div class="gcard-l1"><span class="gcard-opp">vs ${esc(g.opp||'상대팀')}</span><span class="gcard-score">${g.gf} : ${g.ga}</span></div>
+          <div class="gcard-l2">${sel==='all'?g.year+'년 · ':''}${dstr}${g.place?` · ${esc(g.place)}`:''}</div>
         </div>
       </div>`;
     }).join('');
@@ -1765,7 +1785,7 @@ function renderTeam(){
   if(ad){
     const addBtn = document.getElementById('addGame');
     if(addBtn) addBtn.onclick = ()=>{ const y = sel==='all'?currentYear():sel; addYearToList(y); state.games.unshift({ id:uid(), date:new Date().toISOString(), gf:0, ga:0, opp:'', place:'', year:y }); save(); renderTeam(); };
-    c.querySelectorAll('.game-card input, .game-card select').forEach(inp=>{
+    c.querySelectorAll('.gcard input, .gcard select').forEach(inp=>{
       inp.onchange = ()=>{
         const g = state.games.find(x=>x.id===inp.dataset.gid); if(!g) return;
         const f = inp.dataset.f;
