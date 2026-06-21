@@ -400,6 +400,15 @@
     .uni-toggle button { padding: 8px 14px; }
     /* game card edit fields a touch larger, no iOS zoom */
     .game-card .gc-top input.t, .game-card .gc-bot input.score { font-size: 16px; }
+    /* roster: keep every member on a single line (shrink instead of wrap) */
+    table.roster { table-layout: auto; }
+    table.roster th, table.roster td { padding: 7px 4px; font-size: 12px; white-space: nowrap; }
+    table.roster th { font-size: 10.5px; letter-spacing: 0; }
+    .pos-tag { font-size: 9.5px; padding: 1px 5px; min-width: 0; }
+    .pos-tag + .pos-tag { margin-left: 2px; }
+    .att-toggle { font-size: 11px; padding: 3px 8px; }
+    .role-tag { font-size: 10.5px; padding: 2px 7px; }
+    td.actions .iconbtn { font-size: 11.5px; padding: 3px 3px; }
   }
 </style>
 </head>
@@ -933,11 +942,14 @@ function person(id){ return player(id) || guest(id); }   // 회원 또는 용병
 function attendingPeople(){ return [...state.attendance.map(player).filter(Boolean), ...(state.guests||[])]; }
 function fmtQ(n){ return Number.isInteger(n) ? String(n) : n.toFixed(1); }
 function quarterCount(id){
+  const slots = FORMATIONS[state.formation] || [];
   let total = 0;
   QUARTERS.forEach(q=>{
     const sm = state.quarters[q] || {};
     const sub = (state.subs && state.subs[q]) || {};
     Object.keys(sm).forEach(slot=>{
+      const sl = slots[slot];
+      if(sl && posCat(sl.role)==='GK') return;          // 골키퍼 자리는 출전 쿼터 집계에서 제외
       if(sm[slot]===id) total += sub[slot] ? 0.5 : 1;   // 교체 있으면 선발은 0.5
       if(sub[slot]===id) total += 0.5;                  // 교체 투입 0.5
     });
@@ -1430,6 +1442,7 @@ function openAssign(slotIdx, role){
   if(current){
     const cp = person(current);
     html += `<div class="tac-box"><div class="tac-label">📝 ${cp?esc(cp.name):''} 전술 메모</div><textarea id="tacInput" rows="3" placeholder="이 선수에게 줄 전술 지시를 적어주세요...">${esc((state.tactics||{})[current]||'')}</textarea></div>`;
+    html += `<button data-act="sub"><span class="pos-tag pos-DEF" style="min-width:0;padding:1px 7px">⇄</span>교체 선수 지정 (각 0.5쿼터)</button>`;
     html += `<button data-pick="__clear"><span class="pos-tag" style="background:#999;min-width:0;padding:1px 7px">−</span>이 자리 비우기</button>`;
   }
   html += att.filter(p=>!used.has(p.id)||p.id===current).map(p=>{
@@ -1442,6 +1455,8 @@ function openAssign(slotIdx, role){
   list.innerHTML = html || '<div class="empty-state" style="padding:16px">배치 가능한 선수가 없습니다.</div>';
   const ti = document.getElementById('tacInput');
   if(ti){ ti.oninput = ()=>{ if(!state.tactics) state.tactics={}; const v=ti.value; if(v.trim()) state.tactics[current]=v; else delete state.tactics[current]; save(); }; }
+  const subBtn = list.querySelector('[data-act="sub"]');
+  if(subBtn){ subBtn.onclick = ()=> openSub(assignTarget); }
   list.querySelectorAll('[data-pick]').forEach(b=>{
     b.onclick = ()=>{
       const subMap = state.subs[state.curQ] || (state.subs[state.curQ]={});
@@ -1761,6 +1776,7 @@ function renderIndiv(){
         <td class="nm">${esc(p.name)}</td>
         <td><input class="num" type="number" min="0" value="${st.gp}" data-pid="${p.id}" data-s="gp" ${editable?'':'disabled'}></td>
         <td><input class="num" type="number" min="0" value="${st.goals}" data-pid="${p.id}" data-s="goals" ${editable?'':'disabled'}></td>
+        <td><input class="num" type="number" min="0" value="${st.assists}" data-pid="${p.id}" data-s="assists" ${editable?'':'disabled'}></td>
         <td><input class="num" type="number" min="0" value="${st.assists}" data-pid="${p.id}" data-s="assists" ${editable?'':'disabled'}></td>
         <td><input class="num" type="number" min="0" value="${st.mom}" data-pid="${p.id}" data-s="mom" ${editable?'':'disabled'}></td>
       </tr>`; }).join('')}</tbody>
