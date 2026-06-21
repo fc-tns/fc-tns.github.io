@@ -165,7 +165,7 @@
   .player-dot {
     position: absolute; transform: translate(-50%,-50%);
     display: flex; flex-direction: column; align-items: center; gap: 2px;
-    width: 72px; text-align: center;
+    width: 90px; text-align: center;
     cursor: grab; touch-action: none;
   }
   .player-dot.dragging { cursor: grabbing; z-index: 20; }
@@ -173,7 +173,7 @@
   .player-dot .badge {
     width: 38px; height: 38px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 800; color: #fff; letter-spacing: -.3px;
+    font-size: 11px; font-weight: 800; color: #fff; letter-spacing: -.3px;
     border: 2.5px solid rgba(255,255,255,.92);
     box-shadow: 0 3px 8px rgba(0,0,0,.45), inset 0 2px 5px rgba(255,255,255,.30);
     background: radial-gradient(circle at 50% 30%, rgba(255,255,255,.45), rgba(255,255,255,0) 58%), var(--rc, #7a7a7a);
@@ -181,7 +181,7 @@
   .player-dot .nm {
     margin-top: 3px; font-size: 10.5px; color: #fff; font-weight: 700;
     background: rgba(8,20,12,.5); padding: 1px 7px; border-radius: 9px;
-    max-width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .player-dot.empty .badge { background: rgba(255,255,255,.16); border-style: dashed; border-color: rgba(255,255,255,.6); color: rgba(255,255,255,.7); box-shadow: none; }
   .player-dot.empty .nm { background: transparent; opacity: .6; }
@@ -254,6 +254,23 @@
   }
   .assign-list button:hover { border-color: var(--accent); background: var(--accent-dim); }
   .assign-box .who { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .tac-box { margin-bottom: 10px; }
+  .tac-label { font-size: 12px; font-weight: 700; color: var(--def); margin-bottom: 5px; }
+  .tac-box textarea { width: 100%; font: inherit; font-size: 13.5px; padding: 8px 10px; border: 1px solid var(--def); border-radius: 8px; resize: vertical; min-height: 54px; background: #f6f9fc; }
+  /* 이번주 정보 */
+  .week-info { padding: 14px 16px; }
+  .wi-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; font-size: 14px; }
+  .wi-row.top { align-items: flex-start; }
+  .wi-row:last-child { margin-bottom: 0; }
+  .wi-k { width: 84px; flex-shrink: 0; font-weight: 700; color: var(--muted); font-size: 13px; }
+  .wi-v { font-weight: 600; line-height: 1.5; }
+  .wi-row input { flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; }
+  .wi-uni { font-weight: 800; padding: 3px 12px; border-radius: 20px; font-size: 13px; }
+  .wi-uni.purple { background: #7c3aed; color: #fff; }
+  .wi-uni.white { background: #e9e9ee; color: var(--ink); }
+  .wi-map-wrap { margin: 2px 0 10px; }
+  .wi-map { width: 100%; height: 190px; border: 1px solid var(--line); border-radius: 10px; display: block; }
+  .wi-maplink { display: inline-block; margin-top: 4px; font-size: 13px; font-weight: 600; color: var(--def); }
 
   /* result form */
   .score-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 4px 0 16px; }
@@ -411,6 +428,7 @@
       <button class="btn ghost" id="autoFill">빈자리 자동채우기</button>
       <button class="btn" id="saveGame">이번 경기 저장</button>
     </div>
+    <div class="card week-info" id="weekInfo"></div>
     <div id="builderBody">
       <div class="qbar" id="qbar"></div>
       <div class="overview-grid" id="overview" style="display:none"></div>
@@ -696,6 +714,8 @@ let state = {
   subs: {},              // 쿼터별 {slotIndex: 교체선수id} — 기기별 작업 상태
   guests: [],            // 용병 [{id,name}] — 기기별, 경기 저장 시 초기화
   uniform: 'purple',     // 이번 경기 유니폼 색 (purple/white)
+  place: '',             // 이번주 장소 (지명 또는 지도 링크)
+  tactics: {},           // {personId: 전술메모} — 기기별, 경기 저장 시 초기화
   games: [],             // {id, date, gf, ga, opp, place}  team results
   admins: [],            // [{name, pin}]  PIN을 아는 사람만 명단·기록 수정 가능
   customRoles: [],       // 관리자가 추가한 직책
@@ -822,6 +842,8 @@ function normalizeState(){
   if(!state.subs || typeof state.subs!=='object') state.subs={};
   QUARTERS.forEach(q=>{ if(!state.subs[q]) state.subs[q]={}; });
   if(state.uniform!=='purple' && state.uniform!=='white') state.uniform='purple';
+  if(typeof state.place!=='string') state.place='';
+  if(!state.tactics || typeof state.tactics!=='object') state.tactics={};
   if(!Array.isArray(state.guests)) state.guests=[];
   if(!Array.isArray(state.attendance)) state.attendance=[];
   if(!Array.isArray(state.roster)) state.roster=[];
@@ -1102,6 +1124,32 @@ fsel.onchange = ()=>{ state.formation=fsel.value; state.quarters={1:{},2:{},3:{}
 
 // 유니폼 색 토글
 function renderUni(){ document.querySelectorAll('#uniToggle [data-uni]').forEach(b=>b.classList.toggle('active', state.uniform===b.dataset.uni)); }
+// 이번주 정보 (유니폼 / 장소+지도 / 참여 인원)
+function renderWeekInfo(){
+  const el = document.getElementById('weekInfo'); if(!el) return;
+  const uniTxt = state.uniform==='white' ? '흰색' : '보라';
+  const people = attendingPeople();
+  const names = people.length ? people.map(p=> player(p.id) ? esc(p.name) : esc(p.name)+'(용병)').join(', ') : '—';
+  const place = (state.place||'').trim();
+  const isUrl = /^https?:\/\//i.test(place);
+  let mapHtml = '';
+  if(place){
+    if(isUrl){
+      mapHtml = `<a class="wi-maplink" href="${esc(place)}" target="_blank" rel="noopener">📍 공유한 지도 링크 열기</a>`;
+    } else {
+      const q = encodeURIComponent(place);
+      mapHtml = `<iframe class="wi-map" src="https://www.google.com/maps?q=${q}&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <a class="wi-maplink" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">📍 큰 지도로 보기</a>`;
+    }
+  }
+  el.innerHTML = `
+    <div class="wi-row"><span class="wi-k">이번주 유니폼</span><span class="wi-uni ${state.uniform}">${uniTxt}</span></div>
+    <div class="wi-row"><span class="wi-k">장소</span><input type="text" id="placeInput" placeholder="장소명 또는 지도 링크 붙여넣기" value="${esc(state.place||'')}"></div>
+    ${mapHtml?`<div class="wi-map-wrap">${mapHtml}</div>`:''}
+    <div class="wi-row top"><span class="wi-k">참여 인원</span><span class="wi-v">${names}</span></div>`;
+  const pin = document.getElementById('placeInput');
+  if(pin){ pin.onchange = ()=>{ state.place = pin.value; save(); renderWeekInfo(); }; }
+}
 document.querySelectorAll('#uniToggle [data-uni]').forEach(b=>{ b.onclick = ()=>{ state.uniform = b.dataset.uni; save(); renderUni(); renderBuilder(); }; });
 
 // ---------- builder ----------
@@ -1111,6 +1159,7 @@ function curSlots(){ return state.quarters[state.curQ]; }
 function renderBuilder(){
   fsel.value = state.formation;
   renderUni();
+  renderWeekInfo();
   const body = document.getElementById('builderBody');
   if(state.attendance.length===0 && (state.guests||[]).length===0){
     body.style.display='none';
@@ -1157,8 +1206,9 @@ function renderBuilder(){
     dot.style.left = xy.x+'%'; dot.style.top = xy.y+'%';
     const bc = p ? badgeColor(s.role) : null;
     const hasSub = p && (state.subs[state.curQ]||{})[i];
-    dot.innerHTML = `<div class="badge"${bc?` style="--rc:${bc.bg};color:${bc.fg}"`:''}>${p?esc(p.name.slice(0,2)):posLabel(s.role).slice(0,2)}</div>
-                     <div class="nm">${p?esc(p.name)+(hasSub?' ⇄':''):posLabel(s.role)}</div>`;
+    const tac = p && (state.tactics||{})[p.id];
+    dot.innerHTML = `<div class="badge"${bc?` style="--rc:${bc.bg};color:${bc.fg}"`:''}>${posLabel(s.role)}</div>
+                     <div class="nm">${p?esc(p.name)+(hasSub?' ⇄':'')+(tac?' 📝':''):''}</div>`;
     attachDotInteraction(dot, i, s.role);
     pitch.appendChild(dot);
   });
@@ -1177,7 +1227,7 @@ function renderOverview(){
       const xy = dpos[i] || { x:s.x, y:s.y };
       const bc = p ? badgeColor(s.role) : null;
       return `<div class="player-dot${p?'':' empty'}${s.role==='GK'?' gk':''}" style="left:${xy.x}%;top:${xy.y}%">
-        <div class="badge"${bc?` style="--rc:${bc.bg};color:${bc.fg}"`:''}>${p?esc(p.name.slice(0,2)):posLabel(s.role).slice(0,2)}</div>
+        <div class="badge"${bc?` style="--rc:${bc.bg};color:${bc.fg}"`:''}>${posLabel(s.role)}</div>
         <div class="nm">${p?esc(p.name):''}</div></div>`;
     }).join('');
     const o = state.officials[q] || {};
@@ -1343,7 +1393,11 @@ function openAssign(slotIdx, role){
   const current = slotMap[slotIdx];
   const att = attendingPeople();
   let html = '';
-  if(current){ html += `<button data-pick="__clear"><span class="pos-tag" style="background:#999;min-width:0;padding:1px 7px">−</span>이 자리 비우기</button>`; }
+  if(current){
+    const cp = person(current);
+    html += `<div class="tac-box"><div class="tac-label">📝 ${cp?esc(cp.name):''} 전술 메모</div><textarea id="tacInput" rows="3" placeholder="이 선수에게 줄 전술 지시를 적어주세요...">${esc((state.tactics||{})[current]||'')}</textarea></div>`;
+    html += `<button data-pick="__clear"><span class="pos-tag" style="background:#999;min-width:0;padding:1px 7px">−</span>이 자리 비우기</button>`;
+  }
   html += att.filter(p=>!used.has(p.id)||p.id===current).map(p=>{
     const qc = quarterCount(p.id);
     return `<button data-pick="${p.id}">
@@ -1352,6 +1406,8 @@ function openAssign(slotIdx, role){
     </button>`;
   }).join('');
   list.innerHTML = html || '<div class="empty-state" style="padding:16px">배치 가능한 선수가 없습니다.</div>';
+  const ti = document.getElementById('tacInput');
+  if(ti){ ti.oninput = ()=>{ if(!state.tactics) state.tactics={}; const v=ti.value; if(v.trim()) state.tactics[current]=v; else delete state.tactics[current]; save(); }; }
   list.querySelectorAll('[data-pick]').forEach(b=>{
     b.onclick = ()=>{
       const subMap = state.subs[state.curQ] || (state.subs[state.curQ]={});
@@ -1398,8 +1454,8 @@ function openSub(slotIdx){
   document.getElementById('assignPop').classList.add('show');
 }
 function closeAssign(){ document.getElementById('assignPop').classList.remove('show'); }
-document.getElementById('assignCancel').onclick = closeAssign;
-document.getElementById('assignPop').onclick = e=>{ if(e.target.id==='assignPop') closeAssign(); };
+document.getElementById('assignCancel').onclick = ()=>{ closeAssign(); renderBuilder(); };
+document.getElementById('assignPop').onclick = e=>{ if(e.target.id==='assignPop'){ closeAssign(); renderBuilder(); } };
 
 document.getElementById('copyPrev').onclick = ()=>{
   if(state.curQ==='all'){ flash('먼저 쿼터를 선택하세요'); return; }
@@ -1483,6 +1539,8 @@ document.getElementById('resultSave').onclick = ()=>{
   state.officials = emptyOfficials();
   state.subs = {1:{},2:{},3:{},4:{}};
   state.guests = [];
+  state.tactics = {};
+  state.place = '';
   state.curQ = 1;
   state.attendance = [];
   save();
