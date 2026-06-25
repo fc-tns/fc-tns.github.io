@@ -211,9 +211,10 @@
   .tk { position: absolute; transform: translate(-50%,-50%); cursor: grab; touch-action: none; z-index: 2; }
   .tk.dragging { z-index: 30; }
   .tk .disc {
-    width: 40px; height: 40px; border-radius: 50%;
+    width: 42px; height: 42px; border-radius: 50%; box-sizing: border-box;
     display: flex; align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 800; color: #fff; letter-spacing: -.3px;
+    font-size: 11px; font-weight: 700; color: #fff; letter-spacing: -.4px; line-height: 1;
+    padding: 0 4px; overflow: hidden; white-space: nowrap; text-align: center;
     border: 2.5px solid rgba(255,255,255,.92);
     box-shadow: 0 3px 9px rgba(0,0,0,.45), inset 0 2px 5px rgba(255,255,255,.30);
     background: radial-gradient(circle at 50% 30%, rgba(255,255,255,.45), rgba(255,255,255,0) 58%), var(--rc, #7a7a7a);
@@ -463,6 +464,13 @@
     table.stats input.num { width: 40px; font-size: 13px; padding: 4px; }
     .ge-grid { grid-template-columns: 1fr 1fr; }
     .ge-grid .ge-f:nth-child(3) { grid-column: 1 / -1; }
+    /* 전술칸: 한 화면에 쏙 */
+    #panel-board .hint { margin-bottom: 10px; }
+    .tboard-tools { gap: 6px; margin-bottom: 10px; }
+    .tk-add { padding: 7px 12px; font-size: 12.5px; }
+    .tboard { min-height: 0; height: 56vh; max-width: 100%; }
+    .tk .disc { width: 38px; height: 38px; font-size: 10.5px; }
+    .tk.ball .disc { width: 27px; height: 27px; }
   }
 </style>
 </head>
@@ -1482,8 +1490,7 @@ function renderBoard(){
 }
 function addToken(type){
   if(!Array.isArray(state.board)) state.board=[];
-  const cnt = state.board.filter(b=>b.type===type).length;
-  const label = (type==='home'||type==='away') ? String(cnt+1) : '';
+  const label = '';   // 번호 없이 빈 토큰으로 생성 (탭하면 이름 입력)
   const jitter = ()=> Math.round((Math.random()*16-8));
   const x = Math.max(8, Math.min(92, 50 + jitter()));
   const baseY = type==='home' ? 66 : type==='away' ? 34 : 50;
@@ -1494,7 +1501,7 @@ function addToken(type){
 function editToken(id){
   const t = state.board.find(b=>b.id===id); if(!t) return;
   if(t.type==='ball'){ if(confirm('공을 지울까요?')){ state.board=state.board.filter(b=>b.id!==id); save(); renderBoard(); } return; }
-  const v = prompt('표시할 글자 (비우면 삭제)', t.label||'');
+  const v = prompt('이름 (최대 3글자 · 비우면 삭제)', t.label||'');
   if(v===null) return;
   if(v.trim()===''){ state.board=state.board.filter(b=>b.id!==id); }
   else t.label = v.trim().slice(0,3);
